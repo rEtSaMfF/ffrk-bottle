@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ category }}{% endblock title %}
+{% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
+{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
+<script src="/static/bootstrap-table-keyevents-1.0.0.js"></script>{% endblock extra_body %}
+{% block extra_javascript %}$(document).ready(function () {
+    // These two function calls fix the table header resize
+    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json') }}?category={{ category }}&rarity={{ rarity }}"});
+    $(window).resize(function () {
+      $("#main-table").bootstrapTable("resetView");
+    });
+    $("#main-table").on("load-success.bs.table", function () {
+      // Scroll up
+      //$("div.fixed-table-body").scrollTop($("#main-table").height());
+      // Show success alert
+      //$("#getSuccess").show();
+      // And automatically hide the alert
+      //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
+    });
+    $("#main-table").on("load-error.bs.table", function () {
+      $("div.fixed-table-body").scrollTop($("#main-table").height());
+      $("#getError").show()
+    });
+  });
+  function link_formatter(value, row, index) {
+    if ("search_id" in row) {
+      return '<a href="/'+row["search_id"]+'"><span class="glyphicon glyphicon-zoom-in"></span></a>';
+    }
+  }{% endblock extra_javascript %}
+{% block content %}
+<table
+  id="main-table"
+  class="table-condensed table-striped"
+  data-toggle="table"
+  data-cache="true"
+  data-show-refresh="true"
+  data-show-columns="true"
+  data-pagination="true"
+  data-page-size="25"
+  data-page-list="[25, 50, 100, All]"
+  data-show-toggle="true"
+  data-search="true"
+  data-id-field="id"
+  data-key-events="true"
+>
+  <thead>
+    <tr>
+      <th data-width="25" data-formatter="link_formatter"></th>
+      {% for c in columns %}
+      <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+</table>
+{% endblock content %}

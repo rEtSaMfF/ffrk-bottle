@@ -1,0 +1,8 @@
+bottle
+bottle-sqlalchemy
+PyMySQL
+tabulate
+humanize
+jinja2
+
+### EOF ###

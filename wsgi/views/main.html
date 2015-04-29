@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ o.name }}{% endblock title %}
+{% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
+{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>{% endblock extra_body %}
+{% block extra_javascript %}$(document).ready(function () {
+    {% for tab in o.extra_tabs %}
+    $("#main-tabs a[href='#{{ tab['id'] }}']").on("shown.bs.tab", function (e) {
+      {% if tab.get('data-url') %}
+      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ tab['data-url'] }}"});
+      {% elif tab.get('search_id') %}
+      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ url('json_id', id=tab['search_id']) }}?all=1"});
+      {% else %}
+      //var data = [{'name': '1'}, {'name': '2'},];
+      //$('#{{ tab['id'] }}-table').bootstrapTable({data: data});
+      {% endif %}
+    });
+    $("#{{ tab['id'] }}-table").on("load-error.bs.table", function () {
+      $("#getError").show()
+    });
+    {% endfor %}
+  });
+  function link_formatter(value, row, index) {
+    if ("search_id" in row) {
+      return '<a href="/'+row["search_id"]+'"><span class="glyphicon glyphicon-zoom-in"></span></a>';
+    }
+  }{% endblock extra_javascript %}
+{% block content %}
+<div role="tabpanel" class="container-fluid">
+  <ul id="main-tabs" class="nav nav-tabs" role="tablist">
+    <li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab" class="capitalize">{{ o.name }}</a></li>
+    {% for tab in o.extra_tabs %}
+    <li role="presentation"><a href="#{{ tab['id'] }}" aria-controls="{{ tab['id'] }}" role="tab" data-toggle="tab" class="captalize">{{ tab['title'] }}</a></li>
+    {% endfor %}
+  </ul><!-- /#main-tabs /.nav /.nav-tabs -->
+
+  <!-- Tab panes -->
+  <div class="tab-content">
+    <div role="tabpanel" class="tab-pane active" id="home">
+      <div class="page-header">
+        <h1>{{ o.name }}<small></small></h1>
+      </div>
+      <div class="row">
+        {% for panel in o.main_panels %}
+        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <h3 class="panel-title">{{ panel['title'] }}</h3>
+            </div>
+            {% if panel.get('body') %}
+            <div class="panel-body">
+              {{ panel['body'] }}
+            </div>
+            {% endif %}
+            {% if panel.get('items') %}
+            <ul class="list-group">
+              {% for item in panel['items'] %}
+              <li class="list-group-item">{{ item }}</li>
+              {% endfor %}
+            </ul> <!-- /.list-group -->
+            {% endif %}
+            {% if panel.get('footer') %}
+            <div class="panel-footer">
+              {{ panel['footer'] }}
+            </div>
+            {% endif %}
+          </div> <!-- /.panel -->
+        </div> <!-- /.col -->
+        {% endfor %}
+      </div> <!-- /.row -->
+    </div>
+    {% for tab in o.extra_tabs %}
+    <div role="tabpanel" class="tab-pane" id="{{ tab['id'] }}">
+      <table
+        id="{{ tab['id'] }}-table"
+        class="table-condensed table-striped"
+        data-toggle="table"
+        data-cache="true"
+        data-show-columns="true"
+        data-pagination="true"
+        data-page-size="25"
+        data-page-list="[25, 50, 100, All]"
+        data-show-toggle="true"
+        data-key-events="true"
+      >
+        <thead>
+          <tr>
+            <th data-width="25" data-formatter="link_formatter"></th>
+            {% for c in tab['columns'] %}
+            <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+      </table>
+    </div> <!-- /#{{ tab['id'] }} -->
+    {% endfor %}
+  </div>
+</div><!-- /.container-fluid -->
+{% endblock content %}

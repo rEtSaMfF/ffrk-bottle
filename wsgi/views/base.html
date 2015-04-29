@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{% block title %}FFRK{% endblock title %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.4/slate/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    {% block extra_head %}{% endblock extra_head %}
+    <style type="text/css">
+      body {
+        padding-top: 50px;
+        padding-bottom: 50px;
+      }
+      ul.nav li.dropdown:hover > ul.dropdown-menu {
+        display: block;
+      }
+      #alert-container {
+        position: absolute;
+        z-index: 9999;
+        width: auto;
+        right: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="alert-container">
+      <div id="getError" class="alert alert-danger alert-dismissible fade in" role="alert">
+        <button type="button" class="close">
+          <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+        </button>
+        <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+        <span class="sr-only">Error:</span>
+        Unable to get data from server.
+      </div>
+    </div><!-- /#alert-container -->
+
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="{{ url('home') }}">Home</a>
+        </div>
+
+        <div class="collapse navbar-collapse" id="navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            {% for c in ('relics', 'materials', 'abilities') %}
+            <li class="dropdown">
+              <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}<span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                <li><a href="{{ url('home') }}?category={{ c }}">All</a></li>
+                <li class="divider"></li>
+                {% for r in range(1,6) %}
+                <li><a href="{{ url('home') }}?category={{ c }}&rarity={{ r }}">{{ r }}</a></li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+            {% for c in ('enemies', 'worlds', 'log') %}
+            <li>
+              <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container-fluid -->
+    </nav><!-- /.navbar-fixed-top -->
+    <div id="main-container" class="container-fluid">
+      {% block content %}{% endblock content %}
+    </div><!-- /#main-container -->
+    <nav class="navbar navbar-default navbar-fixed-bottom">
+      <div class="container-fluid">
+      </div><!-- /.container-fluid -->
+    </nav><!-- /.navbar-fixed-bottom -->
+    {% block extra_body %}{% endblock extra_body %}
+    <script type="text/javascript">
+      {% block extra_javascript %}{% endblock extra_javascript %}
+      // Alerts
+      $('.alert .close').on('click', function(e) {
+        $(this).parent().hide();
+      });
+      $('#getError').hide();
+      $('#getSuccess').hide();
+      $('#postError').hide();
+    </script>
+  </body>
+</html>

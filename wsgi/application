@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+
+import json
+import datetime
+import os
+
+from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
+    abort, jinja2_view as view, jinja2_template, template, static_file,\
+    BaseRequest
+from bottle.ext import sqlalchemy
+
+from time import time
+from wsgi import models
+
+### BOTTLE INIT START ###
+app = application = Bottle()
+app.debug = True
+BaseRequest.MEMFILE_MAX = 1024 * 1024 * 2
+
+TEMPLATE_PATH.insert(0, './wsgi/views/')
+
+@app.error(500)
+@app.error(403)
+@app.error(404)
+@view('404.html')
+def error404(e):
+    return {'url': app.get_url, 'error':e.body}
+### BOTTLE INIT END ###
+
+
+def dump_json(data, filepath='/tmp/ffrk.json'):
+    # TODO 2015-05-11
+    # --verbose or logging this
+    print ('Writing {}'.format(filepath))
+    with open(filepath, 'w') as outfile:
+        #json.dump(data, outfile, sort_keys=True, indent=2, ensure_ascii=True)
+        json.dump(data, outfile, sort_keys=True, ensure_ascii=True)
+
+
+@app.get('/static/<filepath:path>', name='static')
+def statics(filepath):
+    root = os.path.join('.', 'wsgi', 'static')
+    if filepath.endswith('.js'):
+        root = os.path.join(root, 'js')
+        if filepath.startswith('js/'):
+            filepath = filepath[len('js/'):]
+    return static_file(filepath, root=root)
+
+
+@app.route('/<iden>', name='main')
+@view('main.html')
+def main(iden=None):
+    '''
+    Render a page for a single object.
+    Corresponds with url('json_id').
+    '''
+    try:
+        iden = int(iden)
+    except ValueError:
+        o = models.get_by_name(iden)
+    else:
+        o = models.get_by_id(iden)
+
+    if o is not None:
+        context = {
+            'o': o,
+            'url': app.get_url,
+        }
+        try:
+            return context
+        except TemplateSyntaxError as e:
+            print ('{}:{}'.format(e.filename, e.lineno))
+    abort(404, 'Object "{}" not found'.format(iden))
+
+
+@app.route('/', name='home')
+@view('table.html')
+def home():
+    '''
+    Render a table.
+    corresponds with url('json').
+    '''
+    # TODO 2015-05-06
+    # Make a real home page
+    # 2015-05-07
+    # We have an about page at least
+    category = request.GET.get('category', '').lower()
+    if not category:
+        redirect(app.get_url('main', iden='about'))
+    rarity = request.GET.get('rarity', 'all')
+    columns = ()
+    for c, cs in (
+        (('material', 'materials'), models.Material.frontend_columns),
+        (('enemy', 'enemies'), models.Enemy.frontend_columns),
+        (('relic', 'relics'), models.Relic.frontend_columns),
+        (('ability', 'abilities'), models.Ability.frontend_columns),
+        (('world', 'worlds', 'realm', 'realms'), models.World.frontend_columns),
+        (('log', 'logs'), models.Log.frontend_columns),
+    ):
+        if category in c:
+            columns = cs
+            break
+    context = {'rarity': rarity, 'category': category,
+               'columns': columns, 'url': app.get_url}
+    try:
+        return context
+    except TemplateSyntaxError as e:
+        print ('{}:{}'.format(e.filename, e.lineno))
+        abort(500, str(e))
+    # Do we need an abort here?
+
+
+@app.route('/json/<id:int>', name='json_id')
+def get_json_by_id(id):
+    '''
+    Get JSON for an object (or all similar objects).
+    '''
+    response.content_type = 'application/json; charset=UTF8'
+
+    all = request.GET.get('all', False)
+    r = models.get_by_id(int(id), all=all)
+
+    if r:
+        if hasattr(r, '__iter__'):
+            return json.dumps([i.dict() for i in r],
+                              default=models.default_encode)
+        return r.jsonify()
+    response.status = 404
+    return json.dumps({'success':False, 'error':'No results found'})
+
+
+@app.route('/json', name='json')
+def get_json():
+    '''
+    Get JSON for a category (table).
+    '''
+    response.content_type = 'application/json; charset=UTF8'
+
+    category = request.GET.get('category', None).lower()
+    if category is None:
+        response.status = 404
+        return json.dumps({'success':False, 'error':'Unknown category'})
+
+    rarity = request.GET.get('rarity', 'all').lower()
+    with models.session_scope() as session:
+        q = None
+        # category, model, order_by, group_by, rarity, limit, filter
+        for c, m, o, g, r, l, f in (
+            (('material', 'materials'),
+             models.Material, 'name', 'id', False, None, None),
+            (('ability', 'abilities'),
+             models.Ability, 'name', 'name', False, None, None),
+            (('enemy', 'enemies'),
+             #models.Enemy, 'name', 'name', True, None, None),
+             #models.Enemy, 'name', 'enemy_id', True, None, None),
+             models.Enemy, 'name', 'param_id', True, None, None),
+            (('relic', 'relics'),
+             models.Relic, 'name', 'name', False, None, None),
+            (('world', 'worlds'), models.World, 'id', 'id', True, None, None),
+            (('dungeon', 'dungeons'),
+             models.Dungeon, 'id', 'id', True, None, models.Dungeon.world_id),
+            # TODO 2015-05-07
+            # Enhance server-side pagination for Log
+            # request.GET.get('offset', 0)
+            # request.GET.get('limit', 25)
+            (('log', 'logs'),
+             models.Log, models.Log.timestamp.desc(), 'id', True, 1000, None),
+        ):
+            if category in c:
+                q = session.query(m).order_by(o).group_by(g).limit(l)
+                #q = session.query(models.Relic).filter(models.Relic.series_id.notlike(1)).group_by('name').order_by('name')
+                if r:
+                    rarity = 'all'
+                break
+        if q is None:
+            response.status = 404
+            return json.dumps({'success':False, 'error':'Unknown category'})
+        if rarity != 'all':
+            # Some tables do not have a rarity column
+            q = q.filter_by(rarity=rarity)
+        filter = request.GET.get('filter')
+        if filter is not None:
+            q = q.filter(f == filter)
+        q = q.all()
+        if q:
+            return json.dumps([i.dict() for i in q],
+                              default=models.default_encode)
+        response.status = 404
+        return json.dumps({'success':False, 'error':'No results found'})
+
+
+@app.route('/post', method='POST')
+def post():
+    '''
+    Parse a new FFRK response (intercepted from a client).
+
+    This is basically the same thing as ffrk_mitm.response() except that
+    here we pick the proper function from the 'action' key instead of
+    flow.request.path.
+    '''
+    #abort(403, '403 Forbidden')
+    response.content_type = 'application/json; charset=UTF8'
+    try:
+        data = request.json
+        action = data['action']
+        filepath = '/tmp/ffrk-{}-{}.json'.format(action.replace('/', '_'), int(time()*1000000))
+        #dump_json(data, filepath=filepath)
+        del(data['action'])
+        for a, m in (
+                ('get_battle_init_data', models.import_battle),
+                ('/dff/world/battles', models.import_battle_list),
+        ):
+            if action == a:
+                if m(data=data, filepath=filepath):
+                    return json.dumps({'success': True})
+                else:
+                    response.status = 500
+                    return json.dumps({'success':False, 'error':'Bad data'})
+        response.status = 500
+        return json.dumps({'success':False, 'error':'Unknown action'})
+    except Exception as e:
+        print (e)
+        response.status = 500
+        return json.dumps({'success':False, 'error':'{}: {}'.format(str(e.__class__), str(e))})
+
+
+### EOF ###
