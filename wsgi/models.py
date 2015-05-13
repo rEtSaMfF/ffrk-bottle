@@ -1058,7 +1058,7 @@ class Material(BetterBase):
         drop_locations = []
         with session_scope() as session:
             drops = session.query(DropAssociation).filter_by(
-                drop_id=self.search_id).options(joinedload('*')).all()
+                drop_id=self.search_id).options(subqueryload('enemy')).all()
             for drop in drops:
                 drop_locations.append(
                     '<a href="/{}">{}</a>'.format(
@@ -1205,7 +1205,7 @@ class Relic(BetterBase):
         drop_locations = []
         with session_scope() as session:
             drops = session.query(DropAssociation).filter_by(
-                drop_id=self.search_id).options(joinedload('*')).all()
+                drop_id=self.search_id).options(subqueryload('enemy')).all()
             for drop in drops:
                 drop_locations.append(
                     '<a href="/{}">{}</a>'.format(
@@ -1309,7 +1309,7 @@ def import_battle_list(data=None, filepath=''):
     /dff/world/battles
     '''
     print ('import_battle_list("{}") start'.format(filepath))
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
@@ -1389,7 +1389,7 @@ def import_battle(data=None, filepath=''):
     get_battle_init_data
     '''
     print ('import_battle("{}") start'.format(filepath))
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
@@ -1488,7 +1488,7 @@ def import_party(data=None, filepath=''):
     /dff/party/list
     '''
     print ('import_party("{}") start'.format(filepath))
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
@@ -1520,7 +1520,7 @@ def import_recipes(data=None, filepath=''):
     /dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
     '''
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
@@ -1556,7 +1556,7 @@ def import_enhance_evolve(data=None, filepath=''):
     /dff/equipment/enhance
     /dff/equipment/evolve
     '''
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
