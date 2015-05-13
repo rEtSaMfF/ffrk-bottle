@@ -454,13 +454,56 @@ class World(BetterBase):
         return '[{}] {}'.format(WORLD_TYPE[self.world_type], self.name)
 
 
+PRIZE_TYPE = {
+    1: 'Completion Reward',
+    2: 'First Time Reward',
+    3: 'Mastery Reward',
+}
+
+class Prize(BetterBase):
+    __tablename__ = 'prize'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(length=32), nullable=False)
+    prize_type = Column(TINYINT, nullable=False)
+    count = Column(Integer, nullable=False)
+
+    drop_type = Column(String(length=16), nullable=False)
+    drop_id = Column(Integer, ForeignKey('drop.id'), nullable=False)
+    dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=False)
+
+    drop = relationship('Drop', backref=backref('prizes'))
+    dungeon = relationship('Dungeon',
+                           backref=backref('prizes',
+                                           order_by='Prize.prize_type'))
+
+    @property
+    def search_id(self):
+        return self.drop_id
+
+    def __init__(self, **kwargs):
+        kwargs['count'] = kwargs['num']
+        kwargs['drop_type'] = kwargs['type_name']
+        for i in (
+            'id',
+            'num',
+            'image_path',
+            'type_name',
+        ):
+            if i in kwargs:
+                del(kwargs[i])
+        super(Prize, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return '{} x{} ({})'.format(self.name, self.count,
+                                    PRIZE_TYPE[self.prize_type])
+
+
 # TODO 2015-05-11
-# Replace dungeon_type with a String
+# Replace dungeon_type column with a String?
 DUNGEON_TYPE = {
     1: 'Classic',
     2: 'Elite',
 }
-
 
 class Dungeon(BetterBase):
     __tablename__ = 'dungeon'
@@ -477,9 +520,6 @@ class Dungeon(BetterBase):
     epilogue = Column(String(length=1024), nullable=True)
 
     battles = relationship('Battle', backref='dungeon')
-
-    #prizes =
-    # This is probably going to be a many to many
 
     frontend_columns = (
         ('challenge_level', 'Difficulty'),
@@ -537,8 +577,8 @@ class Dungeon(BetterBase):
         self._main_panels.append(
             {
                 'title': 'Prizes',
-                #'items': ('<a href="/{}">{}</a>'.format(prize.search_id, prize) for prize in self.prizes),
-                'footer': '*To be implemented (soon).',
+                'items': ('<a href="/{}">{}</a>'.format(prize.search_id, prize) for prize in self.prizes),
+                'footer': 'The "Completion Reward" may be obtained multiple times.',
             },
         )
         self._main_panels.append(
@@ -1296,7 +1336,7 @@ def import_world(data=None, filepath=''):
     /dff/world/dungeons
     '''
     print ('import_world("{}") start'.format(filepath))
-    if data is None:
+    if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
@@ -1311,15 +1351,37 @@ def import_world(data=None, filepath=''):
             new_log = Log(log='Add world {}'.format(new_world))
             session.add(new_log)
         for dungeon in data['dungeons']:
+            prizes = dungeon['prizes']
             new_dungeon = session.query(Dungeon).filter_by(
                 id=dungeon['id']).first()
-            if new_dungeon is not None:
-                continue
-            new_dungeon = Dungeon(**dungeon)
-            session.add(new_dungeon)
-            session.commit()
-            new_log = Log(log='Add dungeon {}'.format(new_dungeon))
-            session.add(new_log)
+            if new_dungeon is None:
+                new_dungeon = Dungeon(**dungeon)
+                session.add(new_dungeon)
+                session.commit()
+                new_log = Log(log='Add dungeon {}'.format(new_dungeon))
+                session.add(new_log)
+            for prize_type, prizes_list in prizes.items():
+                for prize in prizes_list:
+                    id = prize['id']
+                    name = prize['name']
+                    drop = session.query(Drop).filter_by(
+                        id=id).first()
+                    if drop is None:
+                        drop = Drop(id=id, name=name)
+                    old_prize = session.query(Prize).filter_by(
+                        drop_id=id, dungeon=new_dungeon).first()
+                    if old_prize is not None:
+                        continue
+                    prize['prize_type'] = prize_type
+                    prize['drop_id'] = id
+                    new_prize = Prize(**prize)
+                    new_prize.dungeon = new_dungeon
+                    new_prize.drop = drop
+                    session.add(new_prize)
+                    session.commit()
+                    new_log = Log(log='Add prize {} from {}'.format(
+                        new_prize, new_dungeon))
+                    session.add(new_log)
     print ('import_world("{}") end'.format(filepath))
 
 def import_battle(data=None, filepath=''):
