@@ -1344,6 +1344,7 @@ def import_world(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+    success = False
     with session_scope() as session:
         world = data['world']
         new_world = session.query(World).filter_by(id=world['id']).first()
@@ -1385,7 +1386,9 @@ def import_world(data=None, filepath=''):
                     new_log = Log(log='Add prize {} from {}'.format(
                         new_prize, new_dungeon))
                     session.add(new_log)
+        success = True
     print ('import_world("{}") end'.format(filepath))
+    return success
 
 def import_battle(data=None, filepath=''):
     '''
