@@ -531,6 +531,12 @@ class Dungeon(BetterBase):
         main_stats = []
         for k, v in self.frontend_columns:
             main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
+        #main_stats.append(
+        main_stats[-1] =\
+            'Dungeon Type: {}'.format(DUNGEON_TYPE[self.dungeon_type])
+#        )
+        main_stats.insert(0, '<a href="/{}">{}</a>'.format(
+            self.world.search_id, self.world))
         # TODO 2015-05-11
         # Copy the opened_at/closed_at items from World?
 
@@ -555,6 +561,15 @@ class Dungeon(BetterBase):
                     'footer': 'Add markup with spoiler protection',
                 }
             )
+        self._main_panels.append(
+            {
+                'title': 'Preparation Recommendations',
+                'body': 'Things you might want to bring to acheive specific\
+ conditions',
+                'items': ('Also spoiler these just in case',),
+                'footer': '*To be implemented (hopefully).',
+            }
+        )
         battles = []
         total_stam = 0
         for battle in self.battles:
@@ -577,7 +592,11 @@ class Dungeon(BetterBase):
         self._main_panels.append(
             {
                 'title': 'Prizes',
-                'items': ('<a href="/{}">{}</a>'.format(prize.search_id, prize) for prize in self.prizes),
+                'items': ('<a href="/{}">{}</a>'.format(prize.search_id, prize)
+                          if prize.drop_type != 'COMMON' else
+                          '{}'.format(prize) for prize in self.prizes),
+                # Maybe make the items accordian expand or at least group
+                # visually by prize.drop_type
                 'footer': 'The "Completion Reward" may be obtained multiple times.',
             },
         )
@@ -628,6 +647,15 @@ class Dungeon(BetterBase):
             self.world, self.name,
             DUNGEON_TYPE[self.dungeon_type], self.challenge_level)
 
+def find_dungeons_with_no_battles():
+    '''
+    Output which dungeons have no battles in our database for re-population.
+    '''
+    with session_scope() as session:
+        dungeons = session.query(Dungeon).filter(~Dungeon.battles.any()).all()
+        for dungeon in dungeons:
+            print ('{} has no battles'.format(dungeon))
+
 
 class Battle(BetterBase):
     __tablename__ = 'battle'
@@ -639,6 +667,9 @@ class Battle(BetterBase):
     stamina = Column(TINYINT, nullable=False)
 
     enemies = relationship('Enemy', secondary=enemy_table, backref='battles')
+
+    #conditions =
+    # Will probably be a many to many backref
 
     def generate_main_panels(self):
         main_stats = []
@@ -1317,6 +1348,7 @@ def import_battle_list(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
     success = False
     with session_scope() as session:
         for battle in data['battles']:
@@ -1344,6 +1376,7 @@ def import_world(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
     success = False
     with session_scope() as session:
         world = data['world']
@@ -1400,6 +1433,7 @@ def import_battle(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
     success = False
     with session_scope() as session:
         battle = data['battle']
@@ -1436,9 +1470,10 @@ def import_battle(data=None, filepath=''):
                         ).first()
                         if new_enemy is None:
                             # The enemy does not exist so make one!
-                            event = battle.get('event', {})
-                            e['event_id'] = event.get('event_id')
-                            e['event_type'] = event.get('event_type')
+                            event = battle.get('event')
+                            if isintance(event, dict):
+                                e['event_id'] = event.get('event_id')
+                                e['event_type'] = event.get('event_type')
                             e['is_sp_enemy'] = enemy['is_sp_enemy']
                             e['params'] = p
                             new_enemy = Enemy(**e)
@@ -1499,6 +1534,8 @@ def import_party(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
+    success = False
     with session_scope() as session:
         equipments = data['equipments']
         for e in equipments:
@@ -1519,7 +1556,9 @@ def import_party(data=None, filepath=''):
             new_log = Log(log='Add material {}'.format(new_material))
             session.add_all((new_material, new_log))
             session.commit()
+        success = True
     print ('import_party("{}") end'.format(filepath))
+    return success
 
 def import_recipes(data=None, filepath=''):
     '''
@@ -1532,6 +1571,7 @@ def import_recipes(data=None, filepath=''):
         with open(filepath) as infile:
             data = json.load(infile)
 
+    success = False
     with session_scope() as session:
         recipes = data['recipe']
         for grades in recipes.itervalues():
@@ -1556,6 +1596,8 @@ def import_recipes(data=None, filepath=''):
                     new_log = Log(log='Add ability {}'.format(new_ability))
                     session.add_all((new_ability, new_log))
                     session.commit()
+        success = True
+    return success
 
 def import_enhance_evolve(data=None, filepath=''):
     '''
@@ -1567,6 +1609,8 @@ def import_enhance_evolve(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
+    success = False
     with session_scope() as session:
         for e in (data['new_src_user_equipment'],
                   data['old_src_user_equipment'],):
@@ -1577,6 +1621,8 @@ def import_enhance_evolve(data=None, filepath=''):
             new_log = Log(log='Add {}'.format(new_relic))
             session.add_all((new_relic, new_log))
             session.commit()
+        success = False
+    return success
 
 
 # Commented out because recordpeeker.handle_party_list() is superior.
