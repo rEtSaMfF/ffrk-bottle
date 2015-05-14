@@ -402,7 +402,7 @@ class World(BetterBase):
         now = datetime.now()
         if now < self.opened_at:
             main_stats.append(
-                '<span title="{}">{} will be available at {}</span>'.format(
+                '<span title="{}">{} will be available {}</span>'.format(
                     self.opened_at,
                     WORLD_TYPE[self.world_type],
                     naturaltime(self.opened_at)
@@ -1045,7 +1045,10 @@ class Material(BetterBase):
             main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
 
         crafting_recipes = []
-        for cost in self.abilities:
+        for cost in sorted(self.abilities,
+                        key=lambda x: x.ability.ability_id + x.ability.grade):
+            # It would be cool to make each ability item expand to show the
+            # cost per grade on the frontend.
             crafting_recipes.append(
                 '<a href="/{}">{}: {} Orbs</a>'.format(
                     cost.ability.search_id, cost.ability, cost.count)
@@ -1350,7 +1353,7 @@ def import_world(data=None, filepath=''):
             session.commit()
             new_log = Log(log='Add world {}'.format(new_world))
             session.add(new_log)
-        for dungeon in data['dungeons']:
+        for dungeon in data.get('dungeons', []):
             prizes = dungeon['prizes']
             new_dungeon = session.query(Dungeon).filter_by(
                 id=dungeon['id']).first()

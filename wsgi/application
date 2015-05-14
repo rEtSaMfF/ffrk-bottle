@@ -209,6 +209,7 @@ def post():
         for a, m in (
                 ('get_battle_init_data', models.import_battle),
                 ('/dff/world/battles', models.import_battle_list),
+                ('/dff/world/dungeons', models.import_world),
         ):
             if action == a:
                 if m(data=data, filepath=filepath):

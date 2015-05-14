@@ -14,6 +14,15 @@
       //$('#{{ tab['id'] }}-table').bootstrapTable({data: data});
       {% endif %}
     });
+    $("#{{ tab['id'] }}-table").on("load-success.bs.table", function () {
+      // Scroll up
+      //$("div.fixed-table-body").scrollTop($("#main-table").height());
+      // Show success alert
+      //$("#getSuccess").show();
+      // And automatically hide the alert
+      //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
+      $('#getError').hide();
+    });
     $("#{{ tab['id'] }}-table").on("load-error.bs.table", function () {
       $("#getError").show()
     });
@@ -21,6 +30,8 @@
   });
   function link_formatter(value, row, index) {
     if ("search_id" in row) {
+      {# We are not able to use url('main', iden=row['search_id'])
+         because jinja does not know what row is. #}
       return '<a href="/'+row["search_id"]+'"><span class="glyphicon glyphicon-zoom-in"></span></a>';
     }
   }{% endblock extra_javascript %}
