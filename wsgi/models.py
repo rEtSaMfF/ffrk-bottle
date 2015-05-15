@@ -1405,11 +1405,12 @@ def import_world(data=None, filepath=''):
                         id=id).first()
                     if drop is None:
                         drop = Drop(id=id, name=name)
+                    prize['prize_type'] = prize_type
                     old_prize = session.query(Prize).filter_by(
-                        drop_id=id, dungeon=new_dungeon).first()
+                        drop_id=id, prize_type=prize_type,
+                        dungeon=new_dungeon).first()
                     if old_prize is not None:
                         continue
-                    prize['prize_type'] = prize_type
                     prize['drop_id'] = id
                     new_prize = Prize(**prize)
                     new_prize.dungeon = new_dungeon
@@ -1471,7 +1472,7 @@ def import_battle(data=None, filepath=''):
                         if new_enemy is None:
                             # The enemy does not exist so make one!
                             event = battle.get('event')
-                            if isinstance(event, dict):
+                            if event is not None and isinstance(event, dict):
                                 e['event_id'] = event.get('event_id')
                                 e['event_type'] = event.get('event_type')
                             e['is_sp_enemy'] = enemy['is_sp_enemy']
