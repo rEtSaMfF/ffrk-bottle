@@ -39,6 +39,7 @@ def dump_json(data, filepath='/tmp/ffrk.json'):
 
 @app.get('/static/<filepath:path>', name='static')
 def statics(filepath):
+    print ('backend static request for {}'.format(filepath))
     root = os.path.join('.', 'wsgi', 'static')
     if filepath.endswith('.js'):
         root = os.path.join(root, 'js')
@@ -164,7 +165,7 @@ def get_json():
             # request.GET.get('offset', 0)
             # request.GET.get('limit', 25)
             (('log', 'logs'),
-             models.Log, models.Log.timestamp.desc(), 'id', True, 1000, None),
+             models.Log, models.Log.timestamp.desc(), 'id', True, 100, None),
         ):
             if category in c:
                 q = session.query(m).order_by(o).group_by(g).limit(l)

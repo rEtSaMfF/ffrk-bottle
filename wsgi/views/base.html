@@ -8,11 +8,11 @@
     {% block extra_head %}{% endblock extra_head %}
     <style type="text/css">
       body {
-        padding-top: 50px;
-        padding-bottom: 50px;
+        //padding-top: 50px;
+        //padding-bottom: 50px;
       }
       ul.nav li.dropdown:hover > ul.dropdown-menu {
-        display: block;
+        //display: block;
       }
       #alert-container {
         position: absolute;
@@ -34,7 +34,7 @@
       </div>
     </div><!-- /#alert-container -->
 
-    <nav class="navbar navbar-default navbar-fixed-top">
+    <nav class="navbar navbar-default navbar-static-top">
       <div class="container-fluid">
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse-1">
@@ -50,7 +50,7 @@
           <ul class="nav navbar-nav">
             {% for c in ('relics', 'materials', 'abilities') %}
             <li class="dropdown">
-              <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}<span class="caret"></span></a>
+              <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">{{ c }}<span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 <li><a href="{{ url('home') }}?category={{ c }}">All</a></li>
                 <li class="divider"></li>
@@ -68,14 +68,14 @@
           </ul>
         </div><!-- /.navbar-collapse -->
       </div><!-- /.container-fluid -->
-    </nav><!-- /.navbar-fixed-top -->
+    </nav><!-- /.navbar-static-top -->
     <div id="main-container" class="container-fluid">
       {% block content %}{% endblock content %}
     </div><!-- /#main-container -->
-    <nav class="navbar navbar-default navbar-fixed-bottom">
+    <nav class="navbar navbar-default navbar-static-bottom">
       <div class="container-fluid">
       </div><!-- /.container-fluid -->
-    </nav><!-- /.navbar-fixed-bottom -->
+    </nav><!-- /.navbar-static-bottom -->
     {% block extra_body %}{% endblock extra_body %}
     <script type="text/javascript">
       {% block extra_javascript %}{% endblock extra_javascript %}
