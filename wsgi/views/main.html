@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ o.name }}{% endblock title %}
 {% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
-{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>{% endblock extra_body %}
+{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
+<script src="{{ url('static', filepath='bootstrap-table-keyevents.min.js') }}"></script>
+<script src="{{ url('static', filepath='base.min.js') }}"></script>
+{% endblock extra_body %}
 {% block extra_javascript %}$(document).ready(function () {
     {% for tab in o.extra_tabs %}
     $("#main-tabs a[href='#{{ tab['id'] }}']").on("shown.bs.tab", function (e) {
@@ -27,14 +30,7 @@
       $("#getError").show()
     });
     {% endfor %}
-  });
-  function link_formatter(value, row, index) {
-    if ("search_id" in row) {
-      {# We are not able to use url('main', iden=row['search_id'])
-         because jinja does not know what row is. #}
-      return '<a href="/'+row["search_id"]+'"><span class="glyphicon glyphicon-zoom-in"></span></a>';
-    }
-  }{% endblock extra_javascript %}
+  });{% endblock extra_javascript %}
 {% block content %}
 <div role="tabpanel" class="container-fluid">
   <ul id="main-tabs" class="nav nav-tabs" role="tablist">
@@ -89,13 +85,13 @@
         data-show-columns="true"
         data-pagination="true"
         data-page-size="25"
-        data-page-list="[25, 50, 100, All]"
+        data-page-list="[10, 25, 50, 100, All]"
         data-show-toggle="true"
         data-key-events="true"
       >
         <thead>
           <tr>
-            <th data-width="25" data-formatter="link_formatter"></th>
+            <th data-width="25" data-formatter="inspect_formatter"></th>
             {% for c in tab['columns'] %}
             <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
             {% endfor %}

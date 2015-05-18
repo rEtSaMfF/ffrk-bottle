@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Dungeons{% endblock title %}
+
+{% block extra_head %}<link rel="stylesheet" href="{{ url('static', filepath='bootstrap-table.min.css') }}">{% endblock extra_head %}
+
+{% block extra_body %}<script src="{{ url('static', filepath='bootstrap-table.min.js') }}"></script>
+<script src="{{ url('static', filepath='bootstrap-table-keyevents.min.js') }}"></script>
+<script src="{{ url('static', filepath='base.min.js') }}"></script>
+{% endblock extra_body %}
+
+{% block extra_javascript %}$(document).ready(function () {
+    // These two function calls fix the table header resize
+    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?content={{ content }}"});
+    $(window).resize(function () {
+      $("#main-table").bootstrapTable("resetView");
+    });
+    $("#main-table").on("load-success.bs.table", function () {
+      // Scroll up
+      //$("div.fixed-table-body").scrollTop($("#main-table").height());
+      // Show success alert
+      //$("#getSuccess").show();
+      // And automatically hide the alert
+      //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
+      $('#getError').hide();
+    }).on("load-error.bs.table", function () {
+      //$("div.fixed-table-body").scrollTop($("#main-table").height());
+      $("#getError").show()
+    }).on("dbl-click-row.bs.table", function (row, e) {
+      $("#main-table").bootstrapTable("remove", {field:"id", values:[e['id']]});
+    });
+    // Show info alert
+    $("#getInfo").show();
+    // Change the info text
+    // How do I just "set" this text instead of append()
+    $("#getInfo").append("You may double click a row to remove it from the table.")
+    // And automatically hide the alert
+    window.setTimeout(function() { $("#getInfo").hide(); }, 10000);
+    {# Why do these .clicks move the window scrollbar to the top? #}
+    $("#hide-button").click(function () {
+      var selected = $("#main-table").bootstrapTable("getSelections");
+      var length = selected.length;
+      for (var i = 0; i < length; i++) {
+        $("#main-table").bootstrapTable("remove", {field:"id", values:[selected[i]["id"]]});
+      }
+    });
+    $("#clear-button").click(function () {
+      $("#main-table").bootstrapTable("uncheckAll");
+    });
+    $("#show-button").click(function () {
+      $("#main-table").bootstrapTable("refresh");
+    });
+  });
+  {% endblock extra_javascript %}
+
+{% block content %}
+<table
+  id="main-table"
+  class="table-condensed table-striped table-responsive"
+  data-toggle="table"
+  data-cache="true"
+  data-show-refresh="true"
+  data-show-columns="true"
+  data-pagination="true"
+  data-page-size="10"
+  data-page-list="[5, 10, 25, 50, 100, All]"
+  data-show-toggle="true"
+  data-search="true"
+  data-key-events="true"
+>
+  <thead>
+    <tr>
+      <th data-field="state" data-checkbox="true"></th>
+      <th data-width="25" data-formatter="inspect_formatter"></th>
+      {% for c in columns %}
+      <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+</table>
+<a id="clear-button" href="#" class="btn btn-default">
+  <span class="glyphicon glyphicon-erase" aria-hidden="true"></span>
+  Uncheck selected items
+</a>
+<a id="hide-button" href="#" class="btn btn-default">
+  <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+  Remove selected items
+</a>
+<a id="show-button" href="#" class="btn btn-default">
+  <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
+  Reload all items from server
+</a>{% endblock content %}

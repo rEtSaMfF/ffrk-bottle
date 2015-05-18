@@ -5,8 +5,7 @@ import datetime
 import os
 
 from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
-    abort, jinja2_view as view, jinja2_template, template, static_file,\
-    BaseRequest
+    abort, static_file, BaseRequest, jinja2_view as view, Jinja2Template
 from bottle.ext import sqlalchemy
 
 from time import time
@@ -24,7 +23,9 @@ TEMPLATE_PATH.insert(0, './wsgi/views/')
 @app.error(404)
 @view('404.html')
 def error404(e):
-    return {'url': app.get_url, 'error':e.body}
+    return {'error':e.body}
+
+Jinja2Template.defaults['url'] = app.get_url
 ### BOTTLE INIT END ###
 
 
@@ -41,10 +42,11 @@ def dump_json(data, filepath='/tmp/ffrk.json'):
 def statics(filepath):
     print ('backend static request for {}'.format(filepath))
     root = os.path.join('.', 'wsgi', 'static')
-    if filepath.endswith('.js'):
-        root = os.path.join(root, 'js')
-        if filepath.startswith('js/'):
-            filepath = filepath[len('js/'):]
+    for ext in ('js', 'css'):
+        if filepath.endswith('.{}'.format(ext)):
+            root = os.path.join(root, ext)
+        if filepath.startswith('{}/'.format(ext)):
+            filepath = filepath[len('{}/'.format(ext)):]
     return static_file(filepath, root=root)
 
 
@@ -65,7 +67,6 @@ def main(iden=None):
     if o is not None:
         context = {
             'o': o,
-            'url': app.get_url,
         }
         try:
             return context
@@ -79,7 +80,7 @@ def main(iden=None):
 def home():
     '''
     Render a table.
-    corresponds with url('json').
+    orresponds with url('json').
     '''
     # TODO 2015-05-06
     # Make a real home page
@@ -101,14 +102,94 @@ def home():
         if category in c:
             columns = cs
             break
-    context = {'rarity': rarity, 'category': category,
-               'columns': columns, 'url': app.get_url}
+    context = {'rarity': rarity, 'category': category, 'columns': columns}
+
     try:
         return context
     except TemplateSyntaxError as e:
         print ('{}:{}'.format(e.filename, e.lineno))
         abort(500, str(e))
     # Do we need an abort here?
+
+
+@app.route('/dungeon', name='dungeon')
+@app.route('/dungeons', name='dungeons')
+@view('dungeons.html')
+def dungeons():
+    '''
+    Render a dungeon table listing.
+    Corresponds with url('json_dungeons').
+    '''
+    content = request.GET.get('content')
+    columns = (
+        ('challenge_level', 'Difficulty'),
+        ('world_name', 'Realm'),
+        ('name', 'Name'),
+        ('type', 'Type'),
+        ('conditions', 'Conditions'),
+        ('stamina', 'Stamina'),
+        ('shards',
+         'Shards <span title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
+        ('prizes', 'Rewards'),
+    )
+
+    context = {'columns': columns, 'content': content}
+    try:
+        return context
+    except TemplateSyntaxError as e:
+        print ('{}:{}'.format(e.filename, e.lineno))
+        abort(500, str(e))
+    # Do we need an abort here?
+
+
+@app.route('/dungeons.json', name='json_dungeons')
+@app.route('/json/dungeons')
+def json_dungeons():
+    '''
+    Get JSON for dungeon listings.
+    '''
+    # TODO 2015-05-18
+    # Filter dungeons by release.
+    # TODO 2015-05-18
+    # Add menu item to filter dungeons by release.
+    response.content_type = 'application/json; charset=UTF8'
+
+    content = request.GET.get('content')
+    dungeons = models.get_dungeons(content)
+
+    if dungeons:
+        outlist = []
+        for dungeon in dungeons:
+            row = dungeon.dict()
+            row['world_name'] = dungeon.world.name
+            row['type'] = models.DUNGEON_TYPE[dungeon.dungeon_type]
+            row['conditions'] = 'To be implemented (hopefully).'
+            shards = 0
+            prizes = []
+            for prize in dungeon.prizes:
+                if prize.name == 'Stamina Shard':
+                    shards += prize.count
+                    continue
+                if prize.drop_type != 'COMMON':
+                    prizes.append('<a href="{}">{}</a>'.format(
+                        app.get_url('main', iden=prize.search_id), prize))
+                else:
+                    prizes.append(str(prize))
+            row['shards'] = shards
+            row['prizes'] = '<br>'.join(prizes)
+            stamina = 0
+            conditions = ['*To be implemented (hopefully).']
+            for battle in dungeon.battles:
+                stamina += battle.stamina
+                #for c in battle.conditions:
+                #    conditions.append(c)
+            row['stamina'] = stamina
+            row['conditions'] = '<br>'.join(conditions)
+            outlist.append(row)
+        return json.dumps(outlist, default=models.default_encode)
+
+    response.status = 404
+    return json.dumps({'success':False, 'error':'No results found'})
 
 
 @app.route('/json/<id:int>', name='json_id')
@@ -122,10 +203,12 @@ def get_json_by_id(id):
     r = models.get_by_id(int(id), all=all)
 
     if r:
-        if hasattr(r, '__iter__'):
-            return json.dumps([i.dict() for i in r],
-                              default=models.default_encode)
-        return r.jsonify()
+        if hasattr(r, 'jsonify'):
+            # This is a single object
+            return r.jsonify()
+        # We have a list of objects
+        return json.dumps([i.dict() for i in r], default=models.default_encode)
+
     response.status = 404
     return json.dumps({'success':False, 'error':'No results found'})
 
@@ -137,10 +220,11 @@ def get_json():
     '''
     response.content_type = 'application/json; charset=UTF8'
 
-    category = request.GET.get('category', None).lower()
+    category = request.GET.get('category', None)
     if category is None:
         response.status = 404
         return json.dumps({'success':False, 'error':'Unknown category'})
+    category = category.lower()
 
     rarity = request.GET.get('rarity', 'all').lower()
     with models.session_scope() as session:
@@ -204,7 +288,8 @@ def post():
     try:
         data = request.json
         action = data['action']
-        filepath = '/tmp/ffrk-{}-{}.json'.format(action.replace('/', '_'), int(time()*1000000))
+        filepath = '/tmp/ffrk-{}-{}.json'.format(
+            action.replace('/', '_'), int(time()*1000000))
         #dump_json(data, filepath=filepath)
         del(data['action'])
         for a, m in (
@@ -223,7 +308,12 @@ def post():
     except Exception as e:
         print (e)
         response.status = 500
-        return json.dumps({'success':False, 'error':'{}: {}'.format(str(e.__class__), str(e))})
+        return json.dumps(
+            {
+                'success':False,
+                'error':'{}: {}'.format(str(e.__class__), str(e))
+            }
+        )
 
 
 ### EOF ###

@@ -2,35 +2,29 @@
 <html>
   <head>
     <title>{% block title %}FFRK{% endblock title %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.4/slate/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url('static', filepath='base.min.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/js/bootstrap.min.js"></script>
     {% block extra_head %}{% endblock extra_head %}
-    <style type="text/css">
-      body {
-        //padding-top: 50px;
-        //padding-bottom: 50px;
-      }
-      ul.nav li.dropdown:hover > ul.dropdown-menu {
-        //display: block;
-      }
-      #alert-container {
-        position: absolute;
-        z-index: 9999;
-        width: auto;
-        right: 0px;
-      }
-    </style>
   </head>
   <body>
     <div id="alert-container">
       <div id="getError" class="alert alert-danger alert-dismissible fade in" role="alert">
-        <button type="button" class="close">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
           <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
         </button>
         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
         <span class="sr-only">Error:</span>
         Unable to get data from server.
+      </div>
+      <div id="getInfo" class="alert alert-info alert-dismissible fade in" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+        </button>
+        <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+        <span class="sr-only">Info:</span>
       </div>
     </div><!-- /#alert-container -->
 
@@ -60,7 +54,18 @@
               </ul>
             </li>
             {% endfor %}
-            {% for c in ('enemies', 'worlds', 'log') %}
+            <li class="dropdown">
+              <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">dungeons<span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                <li><a href="{{ url('home') }}?category=worlds">World & Event listing</a></li>
+                <li class="divider"></li>
+                <li><a href="{{ url('dungeons') }}?content=all">All Dungeons</a></li>
+                {# TODO 2015-05-18
+                   Populate this <ul> from the database and include the dates #}
+                <li><a href="{{ url('dungeons') }}">Latest Dungeons</a></li>
+              </ul>
+            </li>
+            {% for c in ('enemies', 'log') %}
             <li>
               <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
             </li>
@@ -81,11 +86,10 @@
       {% block extra_javascript %}{% endblock extra_javascript %}
       // Alerts
       $('.alert .close').on('click', function(e) {
-        $(this).parent().hide();
+        //$(this).parent().hide();
       });
       $('#getError').hide();
-      $('#getSuccess').hide();
-      $('#postError').hide();
+      $('#getInfo').hide();
     </script>
   </body>
 </html>

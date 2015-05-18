@@ -161,7 +161,6 @@ def session_scope():
         print (traceback.print_exc())
     finally:
         session.close()
-        #print (traceback.print_last())
 
 # TODO 2015-05-08
 # aaargh this
@@ -572,6 +571,8 @@ class Dungeon(BetterBase):
         )
         battles = []
         total_stam = 0
+        # TODO 2015-05-18
+        # Put battles in tabs
         for battle in self.battles:
             item = '<a href="/{}">{} ({} round(s)) [{} stamina]</a>'.format(
                 battle.search_id, battle.name,
@@ -656,6 +657,59 @@ def find_dungeons_with_no_battles():
         for dungeon in dungeons:
             print ('{} has no battles'.format(dungeon))
 
+def get_dungeons(content=None):
+    '''
+    Return a list of dungeons corresponding to a main content update.
+
+    A content of 1 (or less) will return all dungeons.
+    A null content or content greater than the number of content patches will
+    return the latest batch only.
+    '''
+    if content == 'all':
+        content = 0
+    try:
+        content = int(content)
+    except ValueError:
+        content = sys.maxsize
+    except TypeError:
+        content = sys.maxsize
+
+    dungeons = []
+    with session_scope() as session:
+        # Filter out events first
+        worlds = session.query(World).filter(World.world_type == 1)
+        world_ids = (i.id for i in worlds)
+
+        dungeon_query = session.query(Dungeon)\
+                               .options(subqueryload(Dungeon.world))\
+                               .options(subqueryload(Dungeon.prizes))\
+                               .options(subqueryload(Dungeon.battles))\
+                               .filter(Dungeon.world_id.in_(world_ids))\
+                               .order_by(Dungeon.challenge_level, Dungeon.id)
+
+        if content <= 1:
+            # We want all the dungeons from the beginning
+            dungeons = dungeon_query.all()
+        else:
+            # else we want to start from a specific content update
+            # Sort and group the dungeons
+            temp_dungeons = dungeon_query\
+                .order_by('opened_at')\
+                .group_by('opened_at').all()
+            # If someone is asking for content from the future return the
+            # latest content update only
+            content = min(content, len(temp_dungeons))
+            # Subtract one from the content number because we count the original
+            # content as "1" and not "0"
+            content -= 1
+            # Get the datetime this update was released
+            opened_at = temp_dungeons[content].opened_at
+            # Now we can finally get all the dungeons released after this time
+            dungeons = dungeon_query.filter(
+                Dungeon.opened_at >= opened_at).all()
+        session.expunge_all()
+
+    return dungeons
 
 class Battle(BetterBase):
     __tablename__ = 'battle'

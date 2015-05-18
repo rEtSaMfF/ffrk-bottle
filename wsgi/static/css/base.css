@@ -1,0 +1,19 @@
+body {
+    //padding-top: 50px;
+    //padding-bottom: 50px;
+}
+
+ul.nav li.dropdown:hover > ul.dropdown-menu {
+    //display: block;
+}
+
+.navbar {
+    margin-bottom: 0px;
+}
+
+#alert-container {
+    position: absolute;
+    z-index: 9999;
+    width: auto;
+    right: 0px;
+}
