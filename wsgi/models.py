@@ -65,8 +65,8 @@ class BetterBase(object):
     @property
     def search_id(self):
         '''
-        The id used to search for this object ignoring varying attributes such
-        as stats per level.
+        The id used to search for this object using get_by_id().
+        This ignores varying attributes such as stats per level.
         '''
         return self.id
 
@@ -827,6 +827,13 @@ class Enemy(BetterBase):
         ('is_sp_enemy', 'Boss'),
     )
 
+    @property
+    def search_id(self):
+        # enemy_id 4xxxxx may have the same id as the elite dungeon it is in
+        # So we have to query by param_id or use get_by_id(enemy=True)
+        #return self.enemy_id
+        return self.param_id
+
     def generate_main_panels(self):
         self._main_panels = (
             {
@@ -861,8 +868,10 @@ class Enemy(BetterBase):
             {
                 'id': 'stats',
                 'title': 'Stats by Level',
-                'search_id': self.search_id,
+                'search_id': self.enemy_id,
+                'extra_params': '&enemy=1',
                 'columns': (
+                    ('name', 'Name'),
                     ('lv', 'Level'),
                     ('max_hp', 'Max HP'),
                     ('atk', 'ATK'),
@@ -878,10 +887,6 @@ class Enemy(BetterBase):
                 ),
             },
         )
-
-    @property
-    def search_id(self):
-        return self.param_id
 
     def __init__(self, **kwargs):
         for k, v in kwargs['params'].items():
@@ -1526,7 +1531,7 @@ def import_battle(data=None, filepath=''):
                         if new_enemy is None:
                             # The enemy does not exist so make one!
                             event = battle.get('event')
-                            if event is not None and isinstance(event, dict):
+                            if isinstance(event, dict):
                                 e['event_id'] = event.get('event_id')
                                 e['event_type'] = event.get('event_type')
                             e['is_sp_enemy'] = enemy['is_sp_enemy']
@@ -1715,17 +1720,33 @@ def get_by_name(name, all=False):
         # TODO 2015-05-12
         pass
 
-def get_by_id(id, all=False):
+def get_by_id(id, all=False, enemy=False):
     r = None
+    if enemy:
+        with session_scope() as session:
+            # See Enemy.search_id for more information
+            #(Enemy, Enemy.param_id, 'lv'),
+            #(Enemy, Enemy.enemy_id, 'lv'),
+            q = session.query(Enemy)\
+                       .filter(Enemy.enemy_id == id)\
+                       .order_by('lv')\
+                       .options(subqueryload('*'))
+            if all:
+                r = q.all()
+            else:
+                r = q.first()
+            session.expunge_all()
+    if r is not None:
+        return r
     with session_scope() as session:
         for m, c, o in (
             (Material, Material.id, 'id'),
             (World, World.id, 'id'),
             (Dungeon, Dungeon.id, 'id'),
             (Ability, Ability.ability_id, 'name'),
-            (Enemy, Enemy.param_id, 'lv'),
             (Relic, Relic.equipment_id, 'level'),
             (Battle, Battle.id, 'id'),
+            (Enemy, Enemy.param_id, 'lv'),
         ):
             # joinedload('*') is slow
             #q = session.query(m).filter(c == id).order_by(o).options(joinedload('*'))
@@ -1754,14 +1775,6 @@ def get_name_by_id(id):
     if obj2 is not None:
         return obj2.name
     return id
-
-def main():
-    out = rank_relics()
-    for k, v in out.items():
-        print (k, v)
-
-if __name__ == '__main__':
-    main()
 
 
 ### EOF ###

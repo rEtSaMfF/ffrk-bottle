@@ -11,7 +11,7 @@
       {% if tab.get('data-url') %}
       $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ tab['data-url'] }}"});
       {% elif tab.get('search_id') %}
-      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ url('json_id', id=tab['search_id']) }}?all=1"});
+      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ url('json_id', id=tab['search_id']) }}?all=1{{ tab.get('extra_params', '') }}"});
       {% else %}
       //var data = [{'name': '1'}, {'name': '2'},];
       //$('#{{ tab['id'] }}-table').bootstrapTable({data: data});

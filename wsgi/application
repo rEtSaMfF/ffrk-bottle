@@ -200,7 +200,8 @@ def get_json_by_id(id):
     response.content_type = 'application/json; charset=UTF8'
 
     all = request.GET.get('all', False)
-    r = models.get_by_id(int(id), all=all)
+    enemy = request.GET.get('enemy', False)
+    r = models.get_by_id(id, all=all, enemy=enemy)
 
     if r:
         if hasattr(r, 'jsonify'):
@@ -237,8 +238,8 @@ def get_json():
              models.Ability, 'name', 'name', False, None, None),
             (('enemy', 'enemies'),
              #models.Enemy, 'name', 'name', True, None, None),
-             #models.Enemy, 'name', 'enemy_id', True, None, None),
-             models.Enemy, 'name', 'param_id', True, None, None),
+             models.Enemy, 'name', 'enemy_id', True, None, None),
+             #models.Enemy, 'name', 'param_id', True, None, None),
             (('relic', 'relics'),
              models.Relic, 'name', 'name', False, None, None),
             (('world', 'worlds'), models.World, 'id', 'id', True, None, None),
