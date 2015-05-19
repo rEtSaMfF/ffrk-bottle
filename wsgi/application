@@ -298,7 +298,7 @@ def post():
     response.content_type = 'application/json; charset=UTF8'
     try:
         data = request.json
-        action = data['action']
+        action = data.get('action')
         filepath = '/tmp/ffrk-{}-{}.json'.format(
             action.replace('/', '_'), int(time()*1000000))
         #dump_json(data, filepath=filepath)
