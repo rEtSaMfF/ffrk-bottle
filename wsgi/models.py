@@ -775,23 +775,33 @@ class Battle(BetterBase):
                     'footer': '*To be implemented (maybe).',
                 }
             )
+        enemies = []
+        for enemy in self.enemies:
+            item = '<a href="/{}">{}</a>'.format(enemy.search_id, enemy)
+            if enemy.is_sp_enemy:
+                item = '<strong>{}</strong>'.format(item)
+            enemies.append(item)
         self._main_panels.append(
             {
                 'title': 'Enemies',
                 'body': '' if self.enemies else 'No items found in database.',
-                'items': ('<a href="/{}">{}</a>'.format(
-                    enemy.search_id, enemy) for enemy in self.enemies),
-                'footer': 'These items are not all inclusive.'
+                'items': enemies,
+                'footer': 'These items are not all inclusive.<br>Bold name indicates a boss.'
             },
         )
+        drops = []
+        for drop in sorted(self.drops, key=lambda x: x.drop_id):
+            item = '<a href="/{}">{} from {}</a>'.format(
+                    drop.drop_id, drop.drop.name, drop.enemy)
+            if drop.enemy.is_sp_enemy:
+                item = '<strong>{}</strong>'.format(item)
+            drops.append(item)
         self._main_panels.append(
             {
                 'title': 'Drops',
                 'body': '' if self.drops else 'No items found in database.',
-                'items': ('<a href="/{}">{} from {}</a>'.format(
-                    drop.drop_id, drop.drop.name, drop.enemy
-                ) for drop in sorted(self.drops, key=lambda x: x.drop_id)),
-                'footer': '*To be improved (maybe).',
+                'items': drops,
+                'footer': 'Bold indicates a boss.<br>*To be improved (maybe).',
             },
         )
 
