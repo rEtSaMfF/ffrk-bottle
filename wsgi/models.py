@@ -84,14 +84,12 @@ class BetterBase(object):
         return self._main_panels
 
     extra_tabs = []
-    # Will be an iterable of dicts representing objects similar to this object
-    # such as stats per level.
+    # Will be an iterable of dicts representing differnet pages  used to display
+    # objects similar to this object but differing slightly
+    # (such as stats per level).
 
     def __repr__(self):
         return u'{}({})'.format(self.__class__.__name__, self.column_items)
-
-    def tojson(self):
-        return self.column_items
 
     def dict(self):
         '''
@@ -110,7 +108,8 @@ class BetterBase(object):
         '''
         Transform the model into JSON.
         '''
-        return json.dumps(self.dict(), default=default_encode)
+        return json.dumps(self.dict(),
+                          default=default_encode, separators=(',',':'))
 
 def default_encode(obj):
     if isinstance(obj, decimal.Decimal):
