@@ -790,7 +790,7 @@ class Battle(BetterBase):
                 'body': '' if self.drops else 'No items found in database.',
                 'items': ('<a href="/{}">{} from {}</a>'.format(
                     drop.drop_id, drop.drop.name, drop.enemy
-                ) for drop in sorted(self.drops, key=lambda x: x.drop_id),
+                ) for drop in sorted(self.drops, key=lambda x: x.drop_id)),
                 'footer': '*To be improved (maybe).',
             },
         )
