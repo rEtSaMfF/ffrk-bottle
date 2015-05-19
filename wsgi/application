@@ -242,9 +242,11 @@ def get_json():
             (('ability', 'abilities'),
              models.Ability, 'name', 'name', False, None, None),
             (('enemy', 'enemies'),
-             #models.Enemy, 'name', 'name', True, None, None),
-             models.Enemy, 'name', 'enemy_id', True, None, None),
-             #models.Enemy, 'name', 'param_id', True, None, None),
+             #models.Enemy, 'name DESC', 'name', True, None, None),
+             models.Enemy, 'name DESC', 'enemy_id', True, None, None),
+             #models.Enemy, 'name DESC', 'param_id', True, None, None),
+             # TODO 2015-05-18
+             # Filter out blank names (or group such that the non-blanks win)
             (('relic', 'relics'),
              models.Relic, 'name', 'name', False, None, None),
             (('world', 'worlds'), models.World, 'id', 'id', True, None, None),

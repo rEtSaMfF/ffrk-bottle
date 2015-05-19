@@ -25,6 +25,9 @@ from humanize import naturalday, naturaltime
 # TODO 2015-05-11
 # Change all DateTime columns to TIMESTAMP
 
+# TODO 2015-05-19
+# Improve injection attack protection
+# Basically escape every String column
 
 ### SQLALCHEMY INIT START ###
 # Make this a class decorator
@@ -710,6 +713,27 @@ def get_dungeons(content=None):
 
     return dungeons
 
+
+condition_table = Table('condition_table', BetterBase.metadata,
+                    Column('battle_id', Integer, ForeignKey('battle.id')),
+                    Column('condition_id', Integer, ForeignKey('condition.id'))
+)
+
+
+class Condition(BetterBase):
+    __tablename__ = 'condition'
+    id = Column(Integer, primary_key=True, autoincrement=False)
+    code_name = Column(String(length=32), nullable=False)
+    title = Column(String(length=64), nullable=False)
+    medal_num = Column(TINYINT, nullable=False)
+
+    battles = relationship('Battle',
+                           secondary=condition_table, backref='conditions')
+
+    def __repr__(self):
+        return self.title
+
+
 class Battle(BetterBase):
     __tablename__ = 'battle'
     id = Column(Integer, primary_key=True, autoincrement=False)
@@ -721,8 +745,8 @@ class Battle(BetterBase):
 
     enemies = relationship('Enemy', secondary=enemy_table, backref='battles')
 
-    #conditions =
-    # Will probably be a many to many backref
+    # TODO 2015-05-19
+    #messages = a many-to-many backref
 
     def generate_main_panels(self):
         main_stats = []
@@ -766,7 +790,7 @@ class Battle(BetterBase):
                 'body': '' if self.drops else 'No items found in database.',
                 'items': ('<a href="/{}">{} from {}</a>'.format(
                     drop.drop_id, drop.drop.name, drop.enemy
-                ) for drop in self.drops),
+                ) for drop in sorted(self.drops, key=lambda x: x.drop_id),
                 'footer': '*To be improved (maybe).',
             },
         )
@@ -1012,9 +1036,12 @@ class Ability(BetterBase):
                     'grade').all()
             for grade in grades:
                 grade_panel = {'title': 'Grade {}'.format(grade.grade)}
+                gil = grade.required_gil
+                if gil is None or gil == 32767:
+                    gil = 'Unknown'
                 grade_panel['items'] = [
                     'Casts: {}'.format(grade.arg1),
-                    'Creation/Enhancement cost: {}'.format(grade.required_gil),
+                    'Creation/Enhancement cost: {}'.format(gil),
                     'Sale gil: {}'.format(grade.sale_gil),
                 ]
                 for cost in grade.materials:
@@ -1384,6 +1411,14 @@ def check_exists(equipment_id, level, rarity):
         r = session.query(q.exists()).scalar()
     return r
 
+def get_load_data(data, filepath):
+    if data is None or not isinstance(data, dict):
+        if not filepath:
+            raise ValueError('One kwarg of data or filepath is required.')
+        with open(filepath) as infile:
+            data = json.load(infile)
+    return data
+
 def import_dammitdame(filepath):
     print ('import_dammitdame("{}") start'.format(filepath))
     with session_scope() as session:
@@ -1419,8 +1454,7 @@ def import_battle_list(data=None, filepath=''):
                 # This will output None for the dungeon name :(
                 new_log = Log(log='Add battle {}'.format(new_battle))
                 session.add(new_log)
-                #session.add_all((new_battle, new_log))
-    success = True
+        success = True
     print ('import_battle_list("{}") end'.format(filepath))
     return success
 
@@ -1480,6 +1514,32 @@ def import_world(data=None, filepath=''):
                     session.add(new_log)
         success = True
     print ('import_world("{}") end'.format(filepath))
+    return success
+
+def import_win_battle(data=None, filepath=''):
+    '''
+    /dff/battle/win
+    /dff/event/wday/9/win_battle
+    '''
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
+    data = get_load_data(data, filepath)
+
+    battle_id = data.get('battle_id')
+    if battle_id is None:
+        print ('We do not have a battle_id to import this win_battle.')
+        return False
+
+    success = False
+    with session_scope() as session:
+        score = data['score']
+        general = score['general']
+        specific = score['specific']
+        for s in general:
+            old_
+        success = True
+    print ('{}(filepath="{}" end)'.format(
+        sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_battle(data=None, filepath=''):
@@ -1560,6 +1620,7 @@ def import_battle(data=None, filepath=''):
                                drop_association.battle_id != old_battle.id:
                                 # We do not have a DropAssociation or
                                 # the DropAssociation is different
+                                # so make a new one
                                 drop_association = DropAssociation(
                                     enemy_id=new_enemy.id,
                                     drop_id=new_drop.id,
@@ -1655,6 +1716,7 @@ def import_recipes(data=None, filepath=''):
                     new_log = Log(log='Add ability {}'.format(new_ability))
                     session.add_all((new_ability, new_log))
                     session.commit()
+                #elif new_ability.required_gil < a['required_gil']
         success = True
     return success
 

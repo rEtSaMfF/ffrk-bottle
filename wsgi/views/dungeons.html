@@ -6,8 +6,7 @@
 
 {% block extra_body %}<script src="{{ url('static', filepath='bootstrap-table.min.js') }}"></script>
 <script src="{{ url('static', filepath='bootstrap-table-keyevents.min.js') }}"></script>
-<script src="{{ url('static', filepath='base.min.js') }}"></script>
-{% endblock extra_body %}
+<script src="{{ url('static', filepath='base.min.js') }}"></script>{% endblock extra_body %}
 
 {% block extra_javascript %}$(document).ready(function () {
     // These two function calls fix the table header resize
@@ -32,7 +31,8 @@
     // Show info alert
     $("#getInfo").show();
     // Change the info text
-    // How do I just "set" this text instead of append()
+    {# How do I just "set" this text instead of append()
+       I can use a jinja content block #}
     $("#getInfo").append("You may double click a row to remove it from the table.")
     // And automatically hide the alert
     window.setTimeout(function() { $("#getInfo").hide(); }, 10000);
@@ -50,8 +50,7 @@
     $("#show-button").click(function () {
       $("#main-table").bootstrapTable("refresh");
     });
-  });
-  {% endblock extra_javascript %}
+  });{% endblock extra_javascript %}
 
 {% block content %}
 <table
@@ -80,7 +79,7 @@
 </table>
 <a id="clear-button" href="#" class="btn btn-default">
   <span class="glyphicon glyphicon-erase" aria-hidden="true"></span>
-  Uncheck selected items
+  Uncheck all items
 </a>
 <a id="hide-button" href="#" class="btn btn-default">
   <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
