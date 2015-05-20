@@ -11,6 +11,8 @@ from bottle.ext import sqlalchemy
 
 from time import time
 from wsgi import models
+#import models
+
 
 ### BOTTLE INIT START ###
 app = application = Bottle()
@@ -24,11 +26,18 @@ TEMPLATE_PATH.insert(0, './wsgi/views/')
 @app.error(404)
 @view('404.html')
 def error404(e):
-    return {'error':e.body}
+    # e is a bottle.HTTPError
+    return {'error': e.body}
 
 Jinja2Template.defaults['url'] = app.get_url
 ### BOTTLE INIT END ###
 
+
+def minify_json(data):
+    '''
+    Return a json string as small as possible.
+    '''
+    return json.dumps(data, default=models.default_encode, separators=(',',':'))
 
 def dump_json(data, filepath='/tmp/ffrk.json'):
     # TODO 2015-05-11
@@ -41,17 +50,22 @@ def dump_json(data, filepath='/tmp/ffrk.json'):
 
 @app.get('/static/<filepath:path>', name='static')
 def statics(filepath):
-    print ('backend static request for {}'.format(filepath))
-    root = os.path.join('.', 'wsgi', 'static')
+    root = os.path.join('wsgi', 'static')
+    #root = os.path.join('static')
     for ext in ('js', 'css'):
         if filepath.endswith('.{}'.format(ext)):
             root = os.path.join(root, ext)
         if filepath.startswith('{}/'.format(ext)):
             filepath = filepath[len('{}/'.format(ext)):]
+    print ('Serving "{}" from the backend'.format(
+        os.path.join(os.getcwd(), root, filepath)))
     return static_file(filepath, root=root)
 
 
-@app.route('/<iden>', name='main')
+# 2015-05-20
+# Do not change the url routes until we can use bottle.get_url() in models
+#@app.get('/id/<iden>', name='main')
+@app.get('/<iden>', name='main')
 @view('main.html')
 def main(iden=None):
     '''
@@ -76,18 +90,22 @@ def main(iden=None):
     abort(404, 'Object "{}" not found'.format(iden))
 
 
-@app.route('/', name='home')
+# 2015-05-20
+# Do not change the url routes until we can use bottle.get_url() in models
+#@app.get('/<category>', name='home_dynamic')
+@app.get('/', name='home')
 @view('table.html')
-def home():
+def home(category=None):
     '''
     Render a table.
-    orresponds with url('json').
+    Corresponds with url('json').
     '''
     # TODO 2015-05-06
     # Make a real home page
     # 2015-05-07
     # We have an about page at least
-    category = request.GET.get('category', '').lower()
+    if category is None:
+        category = request.GET.get('category', '').lower()
     if not category:
         redirect(app.get_url('main', iden='about'))
     rarity = request.GET.get('rarity', 'all')
@@ -113,8 +131,8 @@ def home():
     # Do we need an abort here?
 
 
-@app.route('/dungeon', name='dungeon')
-@app.route('/dungeons', name='dungeons')
+@app.get('/dungeon', name='dungeon')
+@app.get('/dungeons', name='dungeons')
 @view('dungeons.html')
 def dungeons():
     '''
@@ -143,8 +161,8 @@ def dungeons():
     # Do we need an abort here?
 
 
-@app.route('/dungeons.json', name='json_dungeons')
-@app.route('/json/dungeons')
+@app.get('/dungeons.json', name='json_dungeons')
+@app.get('/json/dungeons')
 def json_dungeons():
     '''
     Get JSON for dungeon listings.
@@ -187,15 +205,13 @@ def json_dungeons():
             row['stamina'] = stamina
             row['conditions'] = '<br>'.join(conditions)
             outlist.append(row)
-        return json.dumps(outlist,
-                          default=models.default_encode, separators=(',',':'))
+        return minify_json(outlist)
 
     response.status = 404
-    return json.dumps(
-        {'success':False, 'error':'No results found'}, separators=(',',':'))
+    return minify_json({'success':False, 'error':'No results found'})
 
 
-@app.route('/json/<id:int>', name='json_id')
+@app.get('/json/<id:int>', name='json_id')
 def get_json_by_id(id):
     '''
     Get JSON for an object (or all similar objects).
@@ -211,15 +227,13 @@ def get_json_by_id(id):
             # This is a single object
             return r.jsonify()
         # We have a list of objects
-        return json.dumps([i.dict() for i in r],
-                          default=models.default_encode, separators=(',',':'))
+        return minify_json([i.dict() for i in r])
 
     response.status = 404
-    return json.dumps(
-        {'success':False, 'error':'No results found'}, separators=(',',':'))
+    return minify_json({'success':False, 'error':'No results found'})
 
 
-@app.route('/json', name='json')
+@app.get('/json', name='json')
 def get_json():
     '''
     Get JSON for a category (table).
@@ -229,8 +243,7 @@ def get_json():
     category = request.GET.get('category', None)
     if category is None:
         response.status = 404
-        return json.dumps(
-            {'success':False, 'error':'Unknown category'}, separators=(',',':'))
+        return minify_json({'success':False, 'error':'Unknown category'})
     category = category.lower()
 
     rarity = request.GET.get('rarity', 'all').lower()
@@ -268,8 +281,7 @@ def get_json():
                 break
         if q is None:
             response.status = 404
-            return json.dumps(
-                {'success':False, 'error':'Unknown category'}, separators=(',',':'))
+            return minify_json({'success':False, 'error':'Unknown category'})
         if rarity != 'all':
             # Some tables do not have a rarity column
             q = q.filter_by(rarity=rarity)
@@ -278,15 +290,12 @@ def get_json():
             q = q.filter(f == filter)
         q = q.all()
         if q:
-            return json.dumps(
-                [i.dict() for i in q],
-                default=models.default_encode, separators=(',',':'))
+            return minify_json([i.dict() for i in q])
         response.status = 404
-        return json.dumps(
-            {'success':False, 'error':'No results found'}, separators=(',',':'))
+        return minify_json({'success':False, 'error':'No results found'})
 
 
-@app.route('/post', method='POST')
+@app.post('/post', method='POST')
 def post():
     '''
     Parse a new FFRK response (intercepted from a client).
@@ -300,8 +309,14 @@ def post():
     try:
         data = request.json
         action = data.get('action')
-        filepath = '/tmp/ffrk-{}-{}.json'.format(
-            action.replace('/', '_'), int(time()*1000000))
+        if action is None:
+            response.status = 500
+            return minify_json({'success':False, 'error':'Unknown action'})
+        filepath = os.path.join(
+            os.environ.get('OPENSHIFT_DATA_DIR', '/tmp'),
+            'post',
+            '{}-{}.json'.format(action.replace('/', '_'), int(time()*1000000))
+        )
         #dump_json(data, filepath=filepath)
         del(data['action'])
         for a, m in (
@@ -311,47 +326,21 @@ def post():
         ):
             if action == a:
                 if m(data=data, filepath=filepath):
-                    return json.dumps({'success': True}, separators=(',',':'))
+                    return minify_json({'success': True})
                 else:
                     response.status = 500
-                    return json.dumps(
-                        {'success':False, 'error':'Bad data'},
-                        separators=(',',':'))
+                    return minify_json({'success':False, 'error':'Bad data'})
         response.status = 500
-        return json.dumps(
-            {'success':False, 'error':'Unknown action'}, separators=(',',':'))
+        return minify_json({'success':False, 'error':'Unknown action'})
     except Exception as e:
         print (e)
         response.status = 500
-        return json.dumps(
+        return minify_json(
             {
                 'success':False,
                 'error':'{}: {}'.format(str(e.__class__), str(e))
-            },
-            separators=(',',':')
+            }
         )
-
-
-### OPENSHIFT INIT START ###
-os.chdir(os.path.dirname(__file__))
-
-sys.path.insert(0, os.path.dirname(__file__) or '.')
-
-PY_DIR = os.path.join(os.environ['OPENSHIFT_HOMEDIR'], "python")
-
-virtenv = PY_DIR + '/virtenv/'
-
-PY_CACHE = os.path.join(
-    virtenv, 'lib', os.environ['OPENSHIFT_PYTHON_VERSION'], 'site-packages')
-
-os.environ['PYTHON_EGG_CACHE'] = os.path.join(PY_CACHE)
-virtualenv = os.path.join(virtenv, 'bin/activate_this.py')
-
-try:
-    exec(open(virtualenv).read(), dict(__file__=virtualenv))
-except IOError:
-    pass
-### OPENSHIFT INIT END ###
 
 
 ### EOF ###

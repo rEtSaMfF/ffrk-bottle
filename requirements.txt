@@ -4,5 +4,6 @@ PyMySQL
 tabulate
 humanize
 jinja2
+nose2
 
 ### EOF ###
