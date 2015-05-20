@@ -47,20 +47,18 @@ class BetterBase(object):
         #return (c.key for c in class_mapper(self.__class__).columns)
 
     @property
-    def column_items(self):
-        return dict(((c, getattr(self, c)) for c in self.columns))
-
-    @property
     def frontend_columns(self):
         '''
         The columns we see when listing all objects of this class.
+        An iterable of tuples (attribute_name, display_name).
         '''
-        return ((c,c) for c in self.columns)
+        return ((c, c) for c in self.columns)
 
     @property
     def main_columns(self):
         '''
         The columns we see when listing similar objects of this class.
+        An iterable of tuples (attribute_name, display_name).
         Example: listing the stats per level.
         '''
         return self.frontend_columns
@@ -71,6 +69,7 @@ class BetterBase(object):
         The id used to search for this object using get_by_id().
         This ignores varying attributes such as stats per level.
         '''
+        # My *_tables do not have an id attribute so this is an AttributeError.
         return self.id
 
     _main_panels = None
@@ -87,22 +86,18 @@ class BetterBase(object):
         return self._main_panels
 
     extra_tabs = []
-    # Will be an iterable of dicts representing differnet pages  used to display
+    # Will be an iterable of dicts representing differnet pages used to display
     # objects similar to this object but differing slightly
     # (such as stats per level).
 
     def __repr__(self):
-        return u'{}({})'.format(self.__class__.__name__, self.column_items)
+        return u'{}({})'.format(self.__class__.__name__, self.columns)
 
     def dict(self):
         '''
         Transform the model into a dictionary.
         '''
-        # first we get the names of all the columns on your model
-        #columns = (c.key for c in class_mapper(self.__class__).columns)
-        # then we return their values in a dict
-        #return dict((c, getattr(self, c)) for c in columns)
-        ret = dict((c, getattr(self, c)) for c in self.column_items)
+        ret = dict((c, getattr(self, c)) for c in self.columns)
         if self.search_id is not None:
             ret['search_id'] = self.search_id
         return ret
@@ -241,13 +236,6 @@ ACCESSORY = 3
 def make_tables():
     BetterBase.metadata.create_all(engine)
 
-enemy_table = Table('enemy_table', BetterBase.metadata,
-                    Column('enemy_id', Integer, ForeignKey('enemy.id'),
-                           nullable=False),
-                    Column('battle_id', Integer, ForeignKey('battle.id'),
-                           nullable=False),
-)
-
 
 # Should this be BetterBase?
 class About(object):
@@ -324,6 +312,10 @@ class Character(BetterBase):
         ):
             if i in kwargs:
                 del(kwargs[i])
+        super(Character, self).__init(**kwargs)
+
+    def __repr__(self):
+        return '{} ({})'.format(self.name, self.level)
 '''
 
 
@@ -715,10 +707,11 @@ def get_dungeons(content=None):
 
 
 condition_table = Table('condition_table', BetterBase.metadata,
-                    Column('battle_id', Integer, ForeignKey('battle.id')),
-                    Column('condition_id', Integer, ForeignKey('condition.id'))
+                    Column('battle_id', Integer,
+                           ForeignKey('battle.id'), nullable=False),
+                    Column('condition_id', Integer,
+                           ForeignKey('condition.id'), nullable=False)
 )
-
 
 class Condition(BetterBase):
     __tablename__ = 'condition'
@@ -733,6 +726,13 @@ class Condition(BetterBase):
     def __repr__(self):
         return self.title
 
+
+enemy_table = Table('enemy_table', BetterBase.metadata,
+                    Column('enemy_id', Integer,
+                           ForeignKey('enemy.id'), nullable=False),
+                    Column('battle_id', Integer,
+                            ForeignKey('battle.id'), nullable=False),
+)
 
 class Battle(BetterBase):
     __tablename__ = 'battle'
@@ -1128,7 +1128,19 @@ class Drop(BetterBase):
             new_log = Log(log='Add name to drop {}'.format(self))
             with session_scope() as session:
                 session.add(new_log)
-            # The session self is attached to will do the commit()
+
+def populate_drop_names():
+    '''
+    Get Drop objects with no name and attempts to repopulate the name.
+    This might run with cron.
+    '''
+    with session_scope() as session:
+        drops = session.query(Drop).filter(~Drop.name.isnot(None)).all()
+        for drop in drops:
+            drop.populate_name()
+            if drop.name is None:
+                print ('Drop({}) still has no name.'.format(drop))
+
 
 class Material(BetterBase):
     __tablename__ = 'material'
@@ -1538,15 +1550,39 @@ def import_win_battle(data=None, filepath=''):
     battle_id = data.get('battle_id')
     if battle_id is None:
         print ('We do not have a battle_id to import this win_battle.')
+        print ('Skipping this import.')
         return False
 
     success = False
     with session_scope() as session:
-        score = data['score']
+        battle = session.query(Battle).filter_by(id=battle_id).first()
+        if battle is None:
+            print ('We are missing a battle object for {}.'.format(battle_id))
+            print ('Skipping this import.')
+            # How the hell would this happen?
+            return False
+
+        score = data['result']['score']
         general = score['general']
         specific = score['specific']
-        for s in general:
-            old_
+        for s in general + specific:
+            id = s['id']
+            # Get the condition if it already exists
+            old_condition = session.query(Condition).filter_by(id=id).first()
+            if old_condition is None:
+                # Make a new condition if it does not exist yet
+                old_condition = Condition(**s)
+                session.add(old_condition)
+                session.commit()
+                new_log = Log(
+                    log='Create new Condition({})'.format(old_condition))
+                session.add(new_log)
+            if old_condition not in battle.conditions:
+                battle.conditions.append(old_condition)
+                new_log = Log(log='Add Condition({}) to Battle({})'.format(
+                    old_condition, battle))
+                session.add(new_log)
+                session.commit()
         success = True
     print ('{}(filepath="{}" end)'.format(
         sys._getframe().f_code.co_name, filepath))
