@@ -6,5 +6,6 @@ humanize
 jinja2
 webtest
 nose
+arrow
 
 ### EOF ###

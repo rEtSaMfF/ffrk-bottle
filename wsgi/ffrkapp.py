@@ -139,20 +139,22 @@ def dungeons():
     Render a dungeon table listing.
     Corresponds with url('json_dungeons').
     '''
-    content = request.GET.get('content')
+    content = request.GET.get('content', '')
+    event = request.GET.get('event', '')
     columns = (
         ('challenge_level', 'Difficulty'),
         ('world_name', 'Realm'),
         ('name', 'Name'),
         ('type', 'Type'),
-        ('conditions', 'Conditions'),
+        ('conditions',
+         'Conditions <span title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
         ('stamina', 'Stamina'),
         ('shards',
          'Shards <span title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
         ('prizes', 'Rewards'),
     )
 
-    context = {'columns': columns, 'content': content}
+    context = {'columns': columns, 'content': content, 'event': event}
     try:
         return context
     except TemplateSyntaxError as e:
@@ -174,7 +176,8 @@ def json_dungeons():
     response.content_type = 'application/json; charset=UTF8'
 
     content = request.GET.get('content')
-    dungeons = models.get_dungeons(content)
+    event = request.GET.get('event')
+    dungeons = models.get_dungeons(content, event)
 
     if dungeons:
         outlist = []
@@ -182,7 +185,6 @@ def json_dungeons():
             row = dungeon.dict()
             row['world_name'] = dungeon.world.name
             row['type'] = models.DUNGEON_TYPE[dungeon.dungeon_type]
-            row['conditions'] = 'To be implemented (hopefully).'
             shards = 0
             prizes = []
             for prize in dungeon.prizes:
@@ -197,12 +199,26 @@ def json_dungeons():
             row['shards'] = shards
             row['prizes'] = '<br>'.join(prizes)
             stamina = 0
-            conditions = ['*To be implemented (hopefully).']
+            # This is repeated three times
+            conditions = []
+            conditions_present = False
+            all_conditions_present = True
             for battle in dungeon.battles:
                 stamina += battle.stamina
-                #for c in battle.conditions:
-                #    conditions.append(c)
+                if not battle.conditions:
+                    all_conditions_present = False
+                for c in battle.conditions:
+                    conditions_present = True
+                    # Filter out the standard conditions
+                    if c.condition_id not in (1001, 1002, 1004):
+                        conditions.append(str(c))
             row['stamina'] = stamina
+            if not conditions_present:
+                conditions.append(
+                    'We have not imported any conditions for this dungeon.')
+            elif not all_conditions_present:
+                conditions.append(
+                    'We are missing some conditions for this dungeon.')
             row['conditions'] = '<br>'.join(conditions)
             outlist.append(row)
         return minify_json(outlist)
@@ -323,6 +339,7 @@ def post():
                 ('get_battle_init_data', models.import_battle),
                 ('/dff/world/battles', models.import_battle_list),
                 ('/dff/world/dungeons', models.import_world),
+                ('win_battle', models.import_win_battle),
         ):
             if action == a:
                 if m(data=data, filepath=filepath):

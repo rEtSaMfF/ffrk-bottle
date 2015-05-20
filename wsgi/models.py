@@ -554,17 +554,12 @@ class Dungeon(BetterBase):
                     'footer': 'Add markup with spoiler protection',
                 }
             )
-        self._main_panels.append(
-            {
-                'title': 'Preparation Recommendations',
-                'body': 'Things you might want to bring to acheive specific\
- conditions',
-                'items': ('Also spoiler these just in case',),
-                'footer': '*To be implemented (hopefully).',
-            }
-        )
         battles = []
         total_stam = 0
+        # This is repeated three times
+        conditions = []
+        conditions_count = 0
+        all_conditions_present = True
         # TODO 2015-05-18
         # Put battles in tabs
         for battle in self.battles:
@@ -575,8 +570,32 @@ class Dungeon(BetterBase):
                 item = '<strong>{}</strong>'.format(item)
             battles.append(item)
             total_stam += battle.stamina
+            if not battle.conditions:
+                all_conditions_present = False
+            for c in battle.conditions:
+                conditions_count += 1
+                # Filter out the standard conditions
+                if c.condition_id not in (1001, 1002, 1004):
+                    conditions.append(str(c))
+
         self._main_panels[0]['items'].append(
             'Total stamina required: {}'.format(total_stam))
+
+        conditions_body = None
+        if not all_conditions_present:
+            if conditions_count:
+                conditions_body = 'We are missing some conditions for this dungeon.'
+            else:
+                conditions_body = 'We have not imported any conditions for this dungeon.'
+        self._main_panels.append(
+            {
+                'title': 'Specific Conditions',
+                'body': conditions_body,
+                'items': conditions,
+                'footer': 'You may lose a max of {} medals and still achieve mastery for this dungeon.'.format(conditions_count//2) if all_conditions_present else '',
+            }
+        )
+
         self._main_panels.append(
             {
                 'title': 'Battles',
@@ -651,7 +670,7 @@ def find_dungeons_with_no_battles():
         for dungeon in dungeons:
             print ('{} has no battles'.format(dungeon))
 
-def get_dungeons(content=None):
+def get_dungeons(content=None, event=None):
     '''
     Return a list of dungeons corresponding to a main content update.
 
@@ -661,6 +680,8 @@ def get_dungeons(content=None):
     '''
     if content == 'all':
         content = 0
+    if content == 'latest':
+        content = sys.maxsize
     try:
         content = int(content)
     except ValueError:
@@ -670,39 +691,44 @@ def get_dungeons(content=None):
 
     dungeons = []
     with session_scope() as session:
-        # Filter out events first
-        worlds = session.query(World).filter(World.world_type == 1)
+        worlds = session.query(World)
+        if event:
+            worlds = worlds.filter(World.world_type == 2)
+        else:
+            worlds = worlds.filter(World.world_type == 1)
         world_ids = (i.id for i in worlds)
 
+        # This selects all the dungeons in an event or world
         dungeon_query = session.query(Dungeon)\
                                .options(subqueryload(Dungeon.world))\
                                .options(subqueryload(Dungeon.prizes))\
                                .options(subqueryload(Dungeon.battles))\
-                               .filter(Dungeon.world_id.in_(world_ids))\
-                               .order_by(Dungeon.challenge_level, Dungeon.id)
+                               .filter(Dungeon.world_id.in_(world_ids))
 
         if content <= 1:
             # We want all the dungeons from the beginning
             dungeons = dungeon_query.all()
         else:
             # else we want to start from a specific content update
+            # We have get the opened_at from temp_dungeons instead of worlds
+            # because the new content might not start with a new World.
             # Sort and group the dungeons
             temp_dungeons = dungeon_query\
-                .order_by('opened_at')\
-                .group_by('opened_at').all()
+                            .order_by(Dungeon.opened_at)\
+                            .group_by(Dungeon.opened_at).all()
             # If someone is asking for content from the future return the
             # latest content update only
             content = min(content, len(temp_dungeons))
             # Subtract one from the content number because we count the original
-            # content as "1" and not "0"
+            # content as "1" and not "0", also avoid IndexError
             content -= 1
             # Get the datetime this update was released
             opened_at = temp_dungeons[content].opened_at
             # Now we can finally get all the dungeons released after this time
             dungeons = dungeon_query.filter(
-                Dungeon.opened_at >= opened_at).all()
+                Dungeon.opened_at >= opened_at)\
+                .order_by(Dungeon.challenge_level, Dungeon.id).all()
         session.expunge_all()
-
     return dungeons
 
 
@@ -715,13 +741,26 @@ condition_table = Table('condition_table', BetterBase.metadata,
 
 class Condition(BetterBase):
     __tablename__ = 'condition'
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    condition_id = Column(SMALLINT, nullable=False)
     code_name = Column(String(length=32), nullable=False)
     title = Column(String(length=64), nullable=False)
-    medal_num = Column(TINYINT, nullable=False)
+    #medal_num = Column(TINYINT, nullable=False)
 
     battles = relationship('Battle',
-                           secondary=condition_table, backref='conditions')
+                           secondary=condition_table,
+                           backref=backref('conditions', lazy='subquery'))
+
+    def __init__(self, **kwargs):
+        kwargs['condition_id'] = kwargs['id']
+        for i in (
+            'id',
+            'medal_num',
+        ):
+            if i in kwargs:
+                del(kwargs[i])
+
+        super(Condition, self).__init__(**kwargs)
 
     def __repr__(self):
         return self.title
@@ -757,7 +796,7 @@ class Battle(BetterBase):
                 'items': main_stats + [
                     'Name: {}'.format(self.name),
                     'Dungeon: {}'.format(
-                        '<a href=/"{}">{}</a>'.format(
+                        '<a href="/{}">{}</a>'.format(
                             self.dungeon.search_id,
                             str(self.dungeon),
                             #self.dungeon.name,
@@ -768,6 +807,7 @@ class Battle(BetterBase):
                 ],
             },
         ]
+
         if self.has_boss:
             self._main_panels.append(
                 {
@@ -775,6 +815,29 @@ class Battle(BetterBase):
                     'footer': '*To be implemented (maybe).',
                 }
             )
+
+        # This is repeated three times
+        conditions = []
+        conditions_count = 0
+        for c in self.conditions:
+            conditions_count += 1
+            # Filter out the standard conditions
+            if c.condition_id not in (1001, 1002, 1004):
+                conditions.append(str(c))
+        conditions_body = None
+        if conditions_count == 0:
+            conditions_body = 'We have not imported any conditions for this battle.'
+        elif conditions_count == 3:
+            conditions_body = 'There are no specific conditions for this battle.'
+        self._main_panels.append(
+            {
+                'title': 'Specific Conditions',
+                'body': conditions_body,
+                'items': conditions,
+                'footer': 'You may lose a max of {} medals and still achieve mastery for this battle.'.format(conditions_count//2) if conditions_count else '',
+            }
+        )
+
         enemies = []
         for enemy in self.enemies:
             item = '<a href="/{}">{}</a>'.format(enemy.search_id, enemy)
@@ -787,8 +850,9 @@ class Battle(BetterBase):
                 'body': '' if self.enemies else 'No items found in database.',
                 'items': enemies,
                 'footer': 'These items are not all inclusive.<br>Bold name indicates a boss.'
-            },
+            }
         )
+
         drops = []
         for drop in sorted(self.drops, key=lambda x: x.drop_id):
             item = '<a href="/{}">{} from {}</a>'.format(
@@ -802,7 +866,7 @@ class Battle(BetterBase):
                 'body': '' if self.drops else 'No items found in database.',
                 'items': drops,
                 'footer': 'Bold indicates a boss.<br>*To be improved (maybe).',
-            },
+            }
         )
 
     def __init__(self, **kwargs):
@@ -1125,7 +1189,7 @@ class Drop(BetterBase):
         name = get_name_by_id(self.id)
         if name != self.id:
             self.name = name
-            new_log = Log(log='Add name to drop {}'.format(self))
+            new_log = Log(log='Add name to Drop({})'.format(self))
             with session_scope() as session:
                 session.add(new_log)
 
@@ -1442,22 +1506,27 @@ def get_load_data(data, filepath):
     return data
 
 def import_dammitdame(filepath):
-    print ('import_dammitdame("{}") start'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     with session_scope() as session:
         pass
-    print ('import_dammitdame("{}") end'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
 
 def import_equipmentbuilder(filepath):
-    print ('import_equipmentbuilder("{}")'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     with session_scope() as session:
         pass
-    print ('import_equipmentbuilder("{}")'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
 
 def import_battle_list(data=None, filepath=''):
     '''
     /dff/world/battles
     '''
-    print ('import_battle_list("{}") start'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -1474,17 +1543,19 @@ def import_battle_list(data=None, filepath=''):
                 session.add(new_battle)
                 session.commit()
                 # This will output None for the dungeon name :(
-                new_log = Log(log='Add battle {}'.format(new_battle))
+                new_log = Log(log='Create Battle({})'.format(new_battle))
                 session.add(new_log)
         success = True
-    print ('import_battle_list("{}") end'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_world(data=None, filepath=''):
     '''
     /dff/world/dungeons
     '''
-    print ('import_world("{}") start'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -1499,7 +1570,7 @@ def import_world(data=None, filepath=''):
             new_world = World(**world)
             session.add(new_world)
             session.commit()
-            new_log = Log(log='Add world {}'.format(new_world))
+            new_log = Log(log='Create World({})'.format(new_world))
             session.add(new_log)
         for dungeon in data.get('dungeons', []):
             prizes = dungeon['prizes']
@@ -1509,7 +1580,7 @@ def import_world(data=None, filepath=''):
                 new_dungeon = Dungeon(**dungeon)
                 session.add(new_dungeon)
                 session.commit()
-                new_log = Log(log='Add dungeon {}'.format(new_dungeon))
+                new_log = Log(log='Create Dungeon({})'.format(new_dungeon))
                 session.add(new_log)
             for prize_type, prizes_list in prizes.items():
                 for prize in prizes_list:
@@ -1531,11 +1602,13 @@ def import_world(data=None, filepath=''):
                     new_prize.drop = drop
                     session.add(new_prize)
                     session.commit()
-                    new_log = Log(log='Add prize {} from {}'.format(
-                        new_prize, new_dungeon))
+                    new_log = Log(
+                        log='Create Prize({}) from Dungeon({})'.format(
+                            new_prize, new_dungeon))
                     session.add(new_log)
         success = True
-    print ('import_world("{}") end'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_win_battle(data=None, filepath=''):
@@ -1566,16 +1639,17 @@ def import_win_battle(data=None, filepath=''):
         general = score['general']
         specific = score['specific']
         for s in general + specific:
-            id = s['id']
             # Get the condition if it already exists
-            old_condition = session.query(Condition).filter_by(id=id).first()
+            old_condition = session.query(Condition).filter_by(
+                title=s['title'], condition_id=s['id'], code_name=s['code_name']
+            ).first()
             if old_condition is None:
                 # Make a new condition if it does not exist yet
                 old_condition = Condition(**s)
                 session.add(old_condition)
                 session.commit()
                 new_log = Log(
-                    log='Create new Condition({})'.format(old_condition))
+                    log='Create Condition({})'.format(old_condition))
                 session.add(new_log)
             if old_condition not in battle.conditions:
                 battle.conditions.append(old_condition)
@@ -1584,7 +1658,7 @@ def import_win_battle(data=None, filepath=''):
                 session.add(new_log)
                 session.commit()
         success = True
-    print ('{}(filepath="{}" end)'.format(
+    print ('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1592,7 +1666,8 @@ def import_battle(data=None, filepath=''):
     '''
     get_battle_init_data
     '''
-    print ('import_battle("{}") start'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -1642,7 +1717,8 @@ def import_battle(data=None, filepath=''):
                             e['is_sp_enemy'] = enemy['is_sp_enemy']
                             e['params'] = p
                             new_enemy = Enemy(**e)
-                            new_log = Log(log='Add enemy {}'.format(new_enemy))
+                            new_log = Log(
+                                log='Create Enemy({})'.format(new_enemy))
                             session.add_all((new_enemy, new_log))
                             session.commit()
                         # Get the battle obj for the next steps
@@ -1676,25 +1752,29 @@ def import_battle(data=None, filepath=''):
                                 session.add(drop_association)
                                 session.commit()
                                 new_log = Log(
-                                    log='Add drop {}'.format(drop_association))
+                                    log='Create Drop({})'.format(
+                                        drop_association))
                                 session.add(new_log)
                         if old_battle not in new_enemy.battles:
                             new_enemy.battles.append(old_battle)
-                            new_log = Log(log='Add enemy {} to {}'.format(
-                                new_enemy, old_battle))
+                            new_log = Log(
+                                log='Add Enemy({}) to Battle({})'.format(
+                                    new_enemy, old_battle))
                             session.add(new_log)
                         session.commit()
                         # TODO 2015-05-10
                         # Improve this nesting indentation
         success = True
-    print ('import_battle("{}") end'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_party(data=None, filepath=''):
     '''
     /dff/party/list
     '''
-    print ('import_party("{}") start'.format(filepath))
+    print ('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -1709,7 +1789,7 @@ def import_party(data=None, filepath=''):
                             e.get('level'), e.get('rarity')):
                 continue
             new_relic = Relic(**e)
-            new_log = Log(log='Add relic {}'.format(new_relic))
+            new_log = Log(log='Create Relic({})'.format(new_relic))
             session.add_all((new_relic, new_log))
             session.commit()
 
@@ -1719,11 +1799,12 @@ def import_party(data=None, filepath=''):
                     id=m['id']).exists()).scalar():
                 continue
             new_material = Material(**m)
-            new_log = Log(log='Add material {}'.format(new_material))
+            new_log = Log(log='Create Material({})'.format(new_material))
             session.add_all((new_material, new_log))
             session.commit()
         success = True
-    print ('import_party("{}") end'.format(filepath))
+    print ('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_recipes(data=None, filepath=''):
@@ -1761,7 +1842,7 @@ def import_recipes(data=None, filepath=''):
                     new_ability = Ability(**a)
                     for new_cost in new_costs:
                         new_ability.materials.append(new_cost)
-                    new_log = Log(log='Add ability {}'.format(new_ability))
+                    new_log = Log(log='Create Ability({})'.format(new_ability))
                     session.add_all((new_ability, new_log))
                     session.commit()
                 #elif new_ability.required_gil < a['required_gil']
@@ -1789,7 +1870,7 @@ def import_enhance_evolve(data=None, filepath=''):
                             e.get('level'), e.get('rarity')):
                 continue
             new_relic = Relic(**e)
-            new_log = Log(log='Add {}'.format(new_relic))
+            new_log = Log(log='Create Relic({})'.format(new_relic))
             session.add_all((new_relic, new_log))
             session.commit()
         success = False

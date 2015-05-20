@@ -62,7 +62,9 @@
                 <li><a href="{{ url('dungeons') }}?content=all">All Dungeons</a></li>
                 {# TODO 2015-05-18
                    Populate this <ul> from the database and include the dates #}
-                <li><a href="{{ url('dungeons') }}">Latest Dungeons</a></li>
+                <li><a href="{{ url('dungeons') }}?content=latest">Latest Dungeons</a></li>
+                <li class="divider"></li>
+                <li><a href="{{ url('dungeons') }}?event=1&content=latest">Latest Event Dungeons</a></li>
               </ul>
             </li>
             {% for c in ('enemies', 'log') %}

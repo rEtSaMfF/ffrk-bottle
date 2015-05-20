@@ -10,7 +10,7 @@
 
 {% block extra_javascript %}$(document).ready(function () {
     // These two function calls fix the table header resize
-    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?content={{ content }}"});
+    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?event={{ event }}&content={{ content }}"});
     $(window).resize(function () {
       $("#main-table").bootstrapTable("resetView");
     });
@@ -61,7 +61,7 @@
   data-show-refresh="true"
   data-show-columns="true"
   data-pagination="true"
-  data-page-size="10"
+  data-page-size="5"
   data-page-list="[5, 10, 25, 50, 100, All]"
   data-show-toggle="true"
   data-search="true"
