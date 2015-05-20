@@ -3,6 +3,7 @@
 import json
 import datetime
 import os
+import sys
 
 from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
     abort, static_file, BaseRequest, jinja2_view as view, Jinja2Template
@@ -329,6 +330,28 @@ def post():
             },
             separators=(',',':')
         )
+
+
+### OPENSHIFT INIT START ###
+os.chdir(os.path.dirname(__file__))
+
+sys.path.insert(0, os.path.dirname(__file__) or '.')
+
+PY_DIR = os.path.join(os.environ['OPENSHIFT_HOMEDIR'], "python")
+
+virtenv = PY_DIR + '/virtenv/'
+
+PY_CACHE = os.path.join(
+    virtenv, 'lib', os.environ['OPENSHIFT_PYTHON_VERSION'], 'site-packages')
+
+os.environ['PYTHON_EGG_CACHE'] = os.path.join(PY_CACHE)
+virtualenv = os.path.join(virtenv, 'bin/activate_this.py')
+
+try:
+    exec(open(virtualenv).read(), dict(__file__=virtualenv))
+except IOError:
+    pass
+### OPENSHIFT INIT END ###
 
 
 ### EOF ###

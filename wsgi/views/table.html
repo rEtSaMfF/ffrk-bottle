@@ -2,8 +2,8 @@
 {% block title %}{{ category.title() }}{% endblock title %}
 {% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
 {% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
-<script src="{{ url('static', filepath='bootstrap-table-keyevents.min.js') }}"></script>
-<script src="{{ url('static', filepath='base.min.js') }}"></script>
+<script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
+<script src="{{ url('static', filepath='js/base.min.js') }}"></script>
 {% endblock extra_body %}
 {% block extra_javascript %}$(document).ready(function () {
     // These two function calls fix the table header resize
