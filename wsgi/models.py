@@ -154,8 +154,9 @@ def session_scope():
         session.commit()
     except Exception as e:
         session.rollback()
-        print (e, e.args)
-        print (traceback.print_exc())
+        logging.error(e, e.args)
+        logging.error(traceback.print_exc())
+        logging.error('exc_info=True', exc_info=True)
     finally:
         session.close()
 
@@ -339,7 +340,7 @@ class Log(BetterBase):
 
     def __init__(self, **kwargs):
         super(Log, self).__init__(**kwargs)
-        print (self.log)
+        logging.info(self.log)
 
     def __repr__(self):
         return '{} {}'.format(self.timestamp, self.log)
@@ -675,7 +676,7 @@ def find_dungeons_with_no_battles():
     with session_scope() as session:
         dungeons = session.query(Dungeon).filter(~Dungeon.battles.any()).all()
         for dungeon in dungeons:
-            print ('{} has no battles'.format(dungeon))
+            logging.warning('{} has no battles'.format(dungeon))
 
 def get_dungeons(content=None, event=None):
     '''
@@ -1003,7 +1004,8 @@ def populate_attribute_names():
         for attribute in attributes:
             attribute.name = ATTRIBUTE_ID.get(attribute.attribute_id, '')
             if not attribute.name:
-                print ('Attribute({}) still has no name.'.format(attribute))
+                logging.warning(
+                    'Attribute({}) still has no name.'.format(attribute))
 
 
 class Enemy(BetterBase):
@@ -1284,7 +1286,7 @@ class Ability(BetterBase):
 
     def __init__(self, **kwargs):
         if kwargs['arg2'] or kwargs['arg3']:
-            print ('\tAbility {} has additional args'.format(kwargs['name']))
+            logging.critical('\tAbility {} has additional args'.format(kwargs['name']))
         for i in (
             'category_id',  # id for category_name
             'arg2',  # all zero
@@ -1349,7 +1351,7 @@ def populate_drop_names():
         for drop in drops:
             drop.populate_name()
             if not drop.name:
-                print ('Drop({}) still has no name.'.format(drop))
+                logging.warning('Drop({}) still has no name.'.format(drop))
 
 
 class Material(BetterBase):
@@ -1652,26 +1654,26 @@ def get_load_data(data, filepath):
     return data
 
 def import_dammitdame(filepath):
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     with session_scope() as session:
         pass
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
 
 def import_equipmentbuilder(filepath):
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     with session_scope() as session:
         pass
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
 
 def import_battle_list(data=None, filepath=''):
     '''
     /dff/world/battles
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -1692,7 +1694,7 @@ def import_battle_list(data=None, filepath=''):
                 new_log = Log(log='Create Battle({})'.format(new_battle))
                 session.add(new_log)
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1700,7 +1702,7 @@ def import_world(data=None, filepath=''):
     '''
     /dff/world/dungeons
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -1754,7 +1756,7 @@ def import_world(data=None, filepath=''):
                             new_prize, new_dungeon))
                     session.add(new_log)
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1763,22 +1765,24 @@ def import_win_battle(data=None, filepath=''):
     /dff/battle/win
     /dff/event/wday/9/win_battle
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
 
     battle_id = data.get('battle_id')
     if battle_id is None:
-        print ('We do not have a battle_id to import this win_battle.')
-        print ('Skipping this import.')
+        logging.critical(
+            'We do not have a battle_id to import this win_battle.')
+        logging.critical('Skipping this import.')
         return False
 
     success = False
     with session_scope() as session:
         battle = session.query(Battle).filter_by(id=battle_id).first()
         if battle is None:
-            print ('We are missing a battle object for {}.'.format(battle_id))
-            print ('Skipping this import.')
+            logging.critical(
+                'We are missing a battle object for {}.'.format(battle_id))
+            logging.critical('Skipping this import.')
             # How the hell would this happen?
             return False
 
@@ -1805,7 +1809,7 @@ def import_win_battle(data=None, filepath=''):
                 session.add(new_log)
                 session.commit()
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1813,7 +1817,7 @@ def import_battle(data=None, filepath=''):
     '''
     get_battle_init_data
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -1902,8 +1906,9 @@ def import_battle(data=None, filepath=''):
                         old_battle = session.query(Battle).filter_by(
                             id=battle_id).first()
                         if old_battle is None:
-                            print ('We are missing a battle object for {}'
-                                   .format(new_enemy))
+                            logging.warning(
+                                'We are missing a battle object for {}'\
+                                .format(new_enemy))
                             # This may occur if we skip import_battle_list()
                             continue
                         # Associate Drop()
@@ -1943,7 +1948,7 @@ def import_battle(data=None, filepath=''):
                         # TODO 2015-05-10
                         # Improve this nesting indentation
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1951,7 +1956,7 @@ def import_party(data=None, filepath=''):
     '''
     /dff/party/list
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -1981,7 +1986,7 @@ def import_party(data=None, filepath=''):
             session.add_all((new_material, new_log))
             session.commit()
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
@@ -1990,7 +1995,7 @@ def import_recipes(data=None, filepath=''):
     /dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
     '''
-    print ('{}(filepath="{}") start'.format(
+    logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -2025,7 +2030,7 @@ def import_recipes(data=None, filepath=''):
                     session.commit()
                 #elif new_ability.required_gil < a['required_gil']
         success = True
-    print ('{}(filepath="{}") end'.format(
+    logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 

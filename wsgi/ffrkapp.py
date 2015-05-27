@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import json
-import datetime
 import os
 import sys
+import logging
 
 from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
     abort, static_file, BaseRequest, jinja2_view as view, Jinja2Template
@@ -11,7 +11,6 @@ from bottle.ext import sqlalchemy
 
 from time import time
 from wsgi import models
-#import models
 
 
 ### BOTTLE INIT START ###
@@ -39,25 +38,25 @@ def minify_json(data):
     '''
     return json.dumps(data, default=models.default_encode, separators=(',',':'))
 
-def dump_json(data, filepath='/tmp/ffrk.json'):
-    # TODO 2015-05-11
-    # --verbose or logging this
-    print ('Writing {}'.format(filepath))
+def save_json(data, filepath='/tmp/ffrk.json', min=False):
+    logging.debug('Writing {}'.format(filepath))
+    if min:
+        kwargs={'separators': (',',':')}
+    else:
+        kwargs={'indent': 2}
     with open(filepath, 'w') as outfile:
-        #json.dump(data, outfile, sort_keys=True, indent=2, ensure_ascii=True)
-        json.dump(data, outfile, sort_keys=True, ensure_ascii=True)
+        json.dump(data, outfile, sort_keys=True, ensure_ascii=True, **kwargs)
 
 
 @app.get('/static/<filepath:path>', name='static')
 def statics(filepath):
     root = os.path.join('wsgi', 'static')
-    #root = os.path.join('static')
     for ext in ('js', 'css'):
         if filepath.endswith('.{}'.format(ext)):
             root = os.path.join(root, ext)
         if filepath.startswith('{}/'.format(ext)):
             filepath = filepath[len('{}/'.format(ext)):]
-    print ('Serving "{}" from the backend'.format(
+    logging.warning('Serving "{}" from the backend'.format(
         os.path.join(os.getcwd(), root, filepath)))
     return static_file(filepath, root=root)
 
@@ -86,7 +85,8 @@ def main(iden=None):
         try:
             return context
         except TemplateSyntaxError as e:
-            print ('{}:{}'.format(e.filename, e.lineno))
+            logging.error('{}:{}'.format(e.filename, e.lineno))
+            logging.error('exc_info=True', exc_info=True)
     abort(404, 'Object "{}" not found'.format(iden))
 
 
@@ -126,7 +126,8 @@ def home(category=None):
     try:
         return context
     except TemplateSyntaxError as e:
-        print ('{}:{}'.format(e.filename, e.lineno))
+        logging.error('{}:{}'.format(e.filename, e.lineno))
+        logging.error('exc_info=True', exc_info=True)
         abort(500, str(e))
     # Do we need an abort here?
 
@@ -158,7 +159,8 @@ def dungeons():
     try:
         return context
     except TemplateSyntaxError as e:
-        print ('{}:{}'.format(e.filename, e.lineno))
+        logging.error('{}:{}'.format(e.filename, e.lineno))
+        logging.error('exc_info=True', exc_info=True)
         abort(500, str(e))
     # Do we need an abort here?
 
@@ -273,10 +275,10 @@ def get_json():
              models.Material, 'name', 'id', False, None, None),
             (('ability', 'abilities'),
              models.Ability, 'name', 'name', False, None, None),
-            (('enemy', 'enemies'),
-             #models.Enemy, 'name DESC', 'name', True, None, None),
-             models.Enemy, 'name DESC', 'enemy_id', True, None, None),
-             #models.Enemy, 'name DESC', 'param_id', True, None, None),
+            (('enemy', 'enemies'), models.Enemy, models.Enemy.name.desc(),
+             #'name', True, None, None),
+             'enemy_id', True, None, None),
+             #'param_id', True, None, None),
              # TODO 2015-05-18
              # Filter out blank names (or group such that the non-blanks win)
             (('relic', 'relics'),
@@ -322,21 +324,29 @@ def post():
     here we pick the proper function from the 'action' key instead of
     flow.request.path.
     '''
-    #abort(403, '403 Forbidden')
+    #abort(401, '401 Unauthorized')
     response.content_type = 'application/json; charset=UTF8'
     try:
         data = request.json
+        if data is None:
+            response.status = 501
+            return minify_json({'success':False, 'error':'No data'})
+
         action = data.get('action')
         if action is None:
-            response.status = 500
+            response.status = 501
             return minify_json({'success':False, 'error':'Unknown action'})
+
         filepath = os.path.join(
             os.environ.get('OPENSHIFT_DATA_DIR', '/tmp'),
             'post',
-            '{}-{}.json'.format(action.replace('/', '_'), int(time()*1000000))
+            '{}-{:0.0f}.json'.format(
+                action.lstrip('/').replace('/', '_'),
+                time()*1000000
+            )
         )
-        #dump_json(data, filepath=filepath)
-        del(data['action'])
+        #save_json(data, filepath=filepath, min=True)
+        #del (data['action'])
         for a, m in (
                 ('get_battle_init_data', models.import_battle),
                 ('/dff/world/battles', models.import_battle_list),
@@ -347,12 +357,13 @@ def post():
                 if m(data=data, filepath=filepath):
                     return minify_json({'success': True})
                 else:
-                    response.status = 500
+                    response.status = 501
                     return minify_json({'success':False, 'error':'Bad data'})
-        response.status = 500
+        response.status = 501
         return minify_json({'success':False, 'error':'Unknown action'})
     except Exception as e:
-        print (e)
+        logging.error(e)
+        logging.error('exc_info=True', exc_info=True)
         response.status = 500
         return minify_json(
             {

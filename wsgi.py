@@ -24,6 +24,16 @@ try:
 except IOError:
     pass
 
+
+import logging
+logfile = os.path.join(os.environ['OPENSHIFT_DATA_DIR'], 'logs', 'ffrk.log')
+logging.basicConfig(filename=logfile, level=logging.DEBUG,
+                    format='%(asctime)s [%(name)s:%(levelname)s] %(message)s',
+                    datefmt='%Y-%m-%dT%H:%M:%S%z',
+)
+logging.info('Logging started')
+
+
 from wsgi.ffrkapp import application
 
 
