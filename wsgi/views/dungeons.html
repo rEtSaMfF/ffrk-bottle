@@ -8,6 +8,7 @@
 <script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
 <script src="{{ url('static', filepath='js/base.min.js') }}"></script>{% endblock extra_body %}
 
+{% block info_alert %}You may double click a row to remove it from the table.{% endblock info_alert %}
 {% block extra_javascript %}$(document).ready(function () {
     // These two function calls fix the table header resize
     $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?event={{ event }}&content={{ content }}"});
@@ -30,10 +31,6 @@
     });
     // Show info alert
     $("#getInfo").show();
-    // Change the info text
-    {# How do I just "set" this text instead of append()
-       I can use a jinja content block #}
-    $("#getInfo").append("You may double click a row to remove it from the table.")
     // And automatically hide the alert
     window.setTimeout(function() { $("#getInfo").hide(); }, 10000);
     {# Why do these .clicks move the window scrollbar to the top? #}

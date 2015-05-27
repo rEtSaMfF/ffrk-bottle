@@ -235,6 +235,7 @@ ACCESSORY = 3
 
 def make_tables():
     BetterBase.metadata.create_all(engine)
+create_tables = make_tables
 
 
 # Should this be BetterBase?
@@ -263,7 +264,7 @@ class Character(BetterBase):
     series_id = Column(Integer, nullable=False)
 
     level = Column(TINYINT, nullable=False)
-    level_max = Column(TINYINT, nullable=False)
+    #level_max = Column(TINYINT, nullable=False)
 
     hp = Column(SMALLINT, nullable=False)
     atk = Column(SMALLINT, nullable=False)
@@ -286,7 +287,9 @@ class Character(BetterBase):
     series_spd = Column(SMALLINT, nullable=False)
 
     #ability_category = 
+    # many-to-many
     #equipment_category = 
+    # many-to-many
 
     def __init__(self, **kwargs):
         kwargs['id'] = kwargs['buddy_id']
@@ -309,10 +312,11 @@ class Character(BetterBase):
             'default_soul_strike_id',
             'ability_category',
             'equipment_category',
+            'level_max',
         ):
             if i in kwargs:
                 del(kwargs[i])
-        super(Character, self).__init(**kwargs)
+        super(Character, self).__init__(**kwargs)
 
     def __repr__(self):
         return '{} ({})'.format(self.name, self.level)
@@ -422,7 +426,7 @@ class World(BetterBase):
             {
                 'title': 'Main Stats',
                 'items': main_stats,
-                'footer': '*Time zones to be implemented.',
+                'footer': '<span class="glyphicon glyphicon-asterisk" aria-hidden="true"></span>Time zones to be implemented.',
             },
         )
 
@@ -587,6 +591,9 @@ class Dungeon(BetterBase):
                 conditions_body = 'We are missing some conditions for this dungeon.'
             else:
                 conditions_body = 'We have not imported any conditions for this dungeon.'
+        elif not conditions:
+            conditions_body = 'There are no specific conditions for this dungeon.'
+
         self._main_panels.append(
             {
                 'title': 'Specific Conditions',
@@ -744,7 +751,7 @@ class Condition(BetterBase):
     id = Column(Integer, primary_key=True, autoincrement=True)
     condition_id = Column(SMALLINT, nullable=False)
     code_name = Column(String(length=32), nullable=False)
-    title = Column(String(length=64), nullable=False)
+    title = Column(String(length=128), nullable=False)
     #medal_num = Column(TINYINT, nullable=False)
 
     battles = relationship('Battle',
@@ -782,6 +789,8 @@ class Battle(BetterBase):
     has_boss = Column(Boolean, nullable=False)
     stamina = Column(TINYINT, nullable=False)
 
+    # TODO 2015-05-22
+    # sort by Enemy.is_sp_enemy
     enemies = relationship('Enemy', secondary=enemy_table, backref='battles')
 
     # TODO 2015-05-19
@@ -834,12 +843,12 @@ class Battle(BetterBase):
                 'title': 'Specific Conditions',
                 'body': conditions_body,
                 'items': conditions,
-                'footer': 'You may lose a max of {} medals and still achieve mastery for this battle.'.format(conditions_count//2) if conditions_count else '',
+                'footer': 'You may lose a max of {} medals and still achieve champion for this battle.'.format(conditions_count//2) if conditions_count else '',
             }
         )
 
         enemies = []
-        for enemy in self.enemies:
+        for enemy in sorted(self.enemies, key=lambda x: x.is_sp_enemy):
             item = '<a href="/{}">{}</a>'.format(enemy.search_id, enemy)
             if enemy.is_sp_enemy:
                 item = '<strong>{}</strong>'.format(item)
@@ -855,6 +864,9 @@ class Battle(BetterBase):
 
         drops = []
         for drop in sorted(self.drops, key=lambda x: x.drop_id):
+            if drop.drop_id > 90000000:
+                # Filter out 'COMMON' drops
+                continue
             item = '<a href="/{}">{} from {}</a>'.format(
                     drop.drop_id, drop.drop.name, drop.enemy)
             if drop.enemy.is_sp_enemy:
@@ -884,6 +896,116 @@ class Battle(BetterBase):
         return '{}>{}'.format(self.dungeon, self.name)
 
 
+ATTRIBUTE_ID = {
+    # Elements
+    100: 'Fire',
+    101: 'Ice',
+    102: 'Lightning',
+    103: 'Earth',
+    104: 'Wind',
+    105: 'Water',
+    106: 'Holy',
+    107: 'Dark',
+    108: 'Poison',
+
+    # Status
+    200: 'Poison',
+    201: 'Silence',
+    202: 'Paralysed',
+    203: 'Confuse',
+    204: 'Haste',
+    205: 'Slow',
+    206: 'Stop',
+    207: 'Protect',
+    208: 'Shell',
+    209: 'Reflect',
+    210: 'Blind',
+    211: 'Sleep',
+    212: 'Petrify',
+    213: 'Doom',
+    214: 'Death',
+    215: 'Berserk',
+    216: 'Regen',
+    217: 'Reraise',
+    218: 'Float',
+    219: 'Weak',
+    220: 'Zombie',
+    221: 'Mini',
+    222: 'Toad',
+    223: 'Curse',
+    224: 'Slownumb',
+    225: 'Blink',
+    226: 'Water Imp',
+    227: 'Vanish',
+    228: 'Porky',
+    229: 'Sap',
+}
+
+FACTOR = {
+    21: 'Absorb',
+    11: 'Null',
+    6: 'Resist',
+    1: 'Weak',
+}
+
+FACTOR_STATUS = {
+    1: 'Immune',
+    0: 'Vulnerable',
+}
+
+def get_factor(attribute_id, factor):
+    if attribute_id < 200:
+        return FACTOR.get(factor)
+    return FACTOR_STATUS.get(factor)
+
+class AttributeAssociation(BetterBase):
+    __tablename__ = 'attribute_table'
+    attribute_id = Column(Integer, ForeignKey('attribute.id'), primary_key=True)
+    param_id = Column(Integer, primary_key=True, autoincrement=False)
+    # Not a ForeignKey('enemy.param_id') because enemy.param_id is not unique
+
+    attribute = relationship('Attribute')
+
+    def __init__(self, **kwargs):
+        super(AttributeAssociation, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return '{}'.format(self.attribute)
+
+class Attribute(BetterBase):
+    __tablename__ = 'attribute'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attribute_id = Column(TINYINT(unsigned=True), nullable=False)
+    factor = Column(TINYINT, nullable=False)
+    #name = Column(String(length=16))
+
+    def __init__(self, **kwargs):
+        super(Attribute, self).__init__(**kwargs)
+        #self.name = ATTRIBUTE_ID.get(self.attribute_id, '')
+
+    def __repr__(self):
+        #return '{}: {}'.format(
+        #    self.name, get_factor(self.attribute_id, self.factor))
+        return '{}: {}'.format(
+            ATTRIBUTE_ID.get(self.attribute_id, self.attribute_id),
+            get_factor(self.attribute_id, self.factor)
+        )
+
+# 2015-05-27
+# Maybe deprecated depending on status of Attribute.name
+def populate_attribute_names():
+    '''
+    Get Attribute() objects with no name and attempts to populate the name.
+    This might run with cron although the name are hardcoded.
+    '''
+    with session_scope() as session:
+        attributes = session.query(Attribute).filter(Attribute.name == '').all()
+        for attribute in attributes:
+            attribute.name = ATTRIBUTE_ID.get(attribute.attribute_id, '')
+            if not attribute.name:
+                print ('Attribute({}) still has no name.'.format(attribute))
+
+
 class Enemy(BetterBase):
     __tablename__ = 'enemy'
     # id is our database unique primary_key (for different stats/levels)
@@ -894,8 +1016,8 @@ class Enemy(BetterBase):
     # Dullahan has multiple param_ids for the different resistances
     param_id = Column(Integer, nullable=False)
     name = Column(String(length=32), nullable=False)
-    # There are at least two different Enemy.filter(name == 'Behemoth')
-    # Although unlike Flan there is not a Realm identifier in the name
+    # There are at least two different Enemy.filter(Enemy.name == 'Behemoth')
+    # And unlike Flan there is not a Realm identifier in the name
     breed_id = Column(TINYINT, nullable=False)
     size = Column(TINYINT, nullable=False)
     is_sp_enemy = Column(TINYINT, nullable=False)
@@ -916,7 +1038,6 @@ class Enemy(BetterBase):
     spd = Column(SMALLINT, nullable=False)
 
     #counters = relationship('counters')
-    #def_attributes = relationship('Def_Attribute')
     exp = Column(SMALLINT, nullable=False)
 
     frontend_columns = (
@@ -931,18 +1052,50 @@ class Enemy(BetterBase):
         #return self.enemy_id
         return self.param_id
 
+    def get_attributes(self):
+        aas = []
+        with session_scope() as session:
+            aas = session.query(AttributeAssociation)\
+                        .filter(AttributeAssociation.param_id == self.param_id)\
+                        .options(subqueryload(AttributeAssociation.attribute))\
+                        .all()
+            session.expunge_all()
+        return aas
+
     def generate_main_panels(self):
-        self._main_panels = (
+        self._main_panels = [
             {
                 'title': 'Main Stats',
                 'items': [
                     'Name: {}'.format(self.name),
                 ],
             },
-            {
-                'title': 'Resistances',
-                'footer': '*To be implemented (hopefully).',
-            },
+        ]
+
+        # get_by_id() does not work here because we need the group_by
+        params = []
+        with session_scope() as session:
+            q = session.query(Enemy)\
+                       .filter(Enemy.enemy_id == self.enemy_id)\
+                       .group_by('param_id')
+            params = q.all()
+            session.expunge_all()
+
+        for param in params:
+            aas = param.get_attributes()
+            self._main_panels.append(
+                {
+                    'title': 'Resistances',
+                    'body': param.name,  # picture probably
+                    'items': sorted(
+                        aas,
+                        key=lambda x: x.attribute.attribute_id
+                    ),
+                    'footer': '*To be improved (maybe).',
+                }
+            )
+
+        self._main_panels += (
             {
                 'title': 'Abilities',
                 'footer': '*To be implemented (hopefully).',
@@ -1014,13 +1167,6 @@ class Enemy(BetterBase):
 
     def __repr__(self):
         return '{} ({})'.format(self.name, self.lv)
-
-
-'''
-class Def_Attribute(BetterBase):
-    __tablename__ = 'def_attribute'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-'''
 
 
 class AbilityCost(BetterBase):
@@ -1175,7 +1321,7 @@ class EnemyAbility(BetterBase):
 class Drop(BetterBase):
     __tablename__ = 'drop'
     id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String(length=32), nullable=True)
+    name = Column(String(length=32), default='')
 
     def __repr__(self):
         if self.name:
@@ -1195,14 +1341,14 @@ class Drop(BetterBase):
 
 def populate_drop_names():
     '''
-    Get Drop objects with no name and attempts to repopulate the name.
+    Get Drop() objects with no name and attempts to populate the name.
     This might run with cron.
     '''
     with session_scope() as session:
-        drops = session.query(Drop).filter(~Drop.name.isnot(None)).all()
+        drops = session.query(Drop).filter(Drop.name == '').all()
         for drop in drops:
             drop.populate_name()
-            if drop.name is None:
+            if not drop.name:
                 print ('Drop({}) still has no name.'.format(drop))
 
 
@@ -1590,6 +1736,7 @@ def import_world(data=None, filepath=''):
                         id=id).first()
                     if drop is None:
                         drop = Drop(id=id, name=name)
+                        # Is this automatically added to the session?
                     prize['prize_type'] = prize_type
                     old_prize = session.query(Prize).filter_by(
                         drop_id=id, prize_type=prize_type,
@@ -1683,9 +1830,9 @@ def import_battle(data=None, filepath=''):
                 for e in enemy['children']:
                     new_drops = []
                     for drop in e['drop_item_list']:
+                        # Get/Create Enemy()
                         id = drop.get('item_id')
                         if id is not None:
-                            # Get the Drop or make a new one
                             new_drop = session.query(Drop).filter_by(
                                 id=id).first()
                             if new_drop is None:
@@ -1694,8 +1841,7 @@ def import_battle(data=None, filepath=''):
                                     name = None
                                 new_drop = Drop(id=id, name=name)
                             new_drops.append(new_drop)
-                    # Get the unique enemy as per param_id and lv
-                    # I do not think enemy_id matters 2015-05-01
+                    # Get/Create Enemy()
                     enemy_id = e['enemy_id']
                     params = e['params']
                     if isinstance(params, dict):
@@ -1704,12 +1850,10 @@ def import_battle(data=None, filepath=''):
                         param_id = p['id']
                         lv = p['lv']
                         new_enemy = session.query(Enemy).filter_by(
-                            enemy_id=enemy_id,
                             param_id=param_id,
                             lv=lv,
                         ).first()
                         if new_enemy is None:
-                            # The enemy does not exist so make one!
                             event = battle.get('event')
                             if isinstance(event, dict):
                                 e['event_id'] = event.get('event_id')
@@ -1721,7 +1865,40 @@ def import_battle(data=None, filepath=''):
                                 log='Create Enemy({})'.format(new_enemy))
                             session.add_all((new_enemy, new_log))
                             session.commit()
-                        # Get the battle obj for the next steps
+                        # Get/Create/Associate Attribute()
+                        for attribute in p['def_attributes']:
+                            attribute = {k:int(v) for k, v in attribute.items()}
+                            new_attribute = session.query(Attribute).filter_by(
+                                **attribute).first()
+                            if new_attribute is None:
+                                new_attribute = Attribute(**attribute)
+                                new_log = Log(log='Create Attribute({})'.format(
+                                    new_attribute))
+                                session.add_all((new_attribute, new_log))
+                                session.commit()
+                            #if new_attribute not in new_enemy.attributes:
+                            association = session.query(AttributeAssociation)\
+                                .filter(
+                                    AttributeAssociation.attribute_id == new_attribute.id,
+                                    AttributeAssociation.param_id == new_enemy.param_id
+                                ).first()
+                            if association is None:
+                                association = AttributeAssociation(
+                                    attribute_id=new_attribute.id,
+                                    param_id=new_enemy.param_id)
+                                session.add(association)
+                                # Ugh, this outpus None for the association
+                                new_log = Log(
+                                    log='Create AttributeAssociation({})'\
+                                    .format(association))
+                                session.add(new_log)
+                                session.commit()
+                                #new_enemy.attributes.append(new_attribute)
+                                #new_log = Log(
+                                #    log='Add Attribute({}) to Enemy({})'.format(
+                                #        new_attribute, new_enemy))
+                                #session.add(new_log)
+                        # Get Battle() (or fail)
                         old_battle = session.query(Battle).filter_by(
                             id=battle_id).first()
                         if old_battle is None:
@@ -1729,7 +1906,7 @@ def import_battle(data=None, filepath=''):
                                    .format(new_enemy))
                             # This may occur if we skip import_battle_list()
                             continue
-                        # Associate the drops with the enemy/battle here
+                        # Associate Drop()
                         for new_drop in new_drops:
                             # See if we have a DropAssociation already
                             drop_association = session.query(
@@ -1752,9 +1929,10 @@ def import_battle(data=None, filepath=''):
                                 session.add(drop_association)
                                 session.commit()
                                 new_log = Log(
-                                    log='Create Drop({})'.format(
+                                    log='Create DropAssociation({})'.format(
                                         drop_association))
                                 session.add(new_log)
+                        # Associate Enemy() with Battle()
                         if old_battle not in new_enemy.battles:
                             new_enemy.battles.append(old_battle)
                             new_log = Log(
@@ -1930,6 +2108,7 @@ def get_by_id(id, all=False, enemy=False):
             session.expunge_all()
     if r is not None:
         return r
+
     with session_scope() as session:
         for m, c, o in (
             (Material, Material.id, 'id'),

@@ -1,11 +1,21 @@
 {% extends "base.html" %}
+
 {% block title %}{{ o.name }}{% endblock title %}
+
 {% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
+
 {% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
 <script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
 <script src="{{ url('static', filepath='js/base.min.js') }}"></script>
 {% endblock extra_body %}
+
+{% block info_alert %}Click a "panel" heading to expand its content.{% endblock info_alert %}
+
 {% block extra_javascript %}$(document).ready(function () {
+    // Show info alert
+    $("#getInfo").show();
+    // And automatically hide the alert
+    window.setTimeout(function() { $("#getInfo").hide(); }, 10000);
     {% for tab in o.extra_tabs %}
     $("#main-tabs a[href='#{{ tab['id'] }}']").on("shown.bs.tab", function (e) {
       {% if tab.get('data-url') %}
@@ -31,6 +41,7 @@
     });
     {% endfor %}
   });{% endblock extra_javascript %}
+
 {% block content %}
 <div role="tabpanel" class="container-fluid">
   <ul id="main-tabs" class="nav nav-tabs" role="tablist">
@@ -50,20 +61,34 @@
         {% for panel in o.main_panels %}
         <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
           <div class="panel panel-default">
-            <div class="panel-heading">
-              <h3 class="panel-title">{{ panel['title'] }}</h3>
-            </div>
+            <div class="panel-heading" role="tab" id="heading{{ loop.index }}">
+              <h3 class="panel-title">
+                {% if loop.first or not panel.get('items')%}
+                {{ panel['title'] }}
+                {% else %}
+                <a class="collapsed" data-toggle="collapse" href="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                  {{ panel['title'] }}<span class="caret"></span>
+                </a>
+                {% endif %}
+              </h3>
+            </div> <!-- /.panel-heading -->
             {% if panel.get('body') %}
             <div class="panel-body">
               {{ panel['body'] }}
             </div>
             {% endif %}
             {% if panel.get('items') %}
-            <ul class="list-group">
-              {% for item in panel['items'] %}
-              <li class="list-group-item">{{ item }}</li>
-              {% endfor %}
-            </ul> <!-- /.list-group -->
+            {% if not loop.first %}
+            <div id="collapse{{ loop.index }}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading{{ loop.index }}">
+            {% endif %}
+              <ul class="list-group">
+                {% for item in panel['items'] %}
+                <li class="list-group-item">{{ item }}</li>
+                {% endfor %}
+              </ul> <!-- /.list-group -->
+            {% if not loop.first %}
+            </div> <!-- /.panel-collapse -->
+            {% endif %}
             {% endif %}
             {% if panel.get('footer') %}
             <div class="panel-footer">

@@ -24,7 +24,7 @@
           <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
         </button>
         <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
-        <span class="sr-only">Info:</span>
+        <span class="sr-only">Info:</span>{% block info_alert %}{% endblock info_alert %}
       </div>
     </div><!-- /#alert-container -->
 
@@ -67,7 +67,7 @@
                 <li><a href="{{ url('dungeons') }}?event=1&content=latest">Latest Event Dungeons</a></li>
               </ul>
             </li>
-            {% for c in ('enemies', 'log') %}
+            {% for c in ('enemies', ) %}
             <li>
               <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
             </li>
@@ -81,7 +81,9 @@
     </div><!-- /#main-container -->
     <nav class="navbar navbar-default navbar-static-bottom">
       <div class="container-fluid">
-        <iframe src="https://ghbtns.com/github-btn.html?user=retsamff&repo=ffrk-bottle&type=fork&count=true" frameborder="0" scrolling="0" width="170px" height="20px" class="navbar-text navbar-right"></iframe>
+        <a href="{{ url('home') }}?category=log" class="text-capitalize navbar-text navbar-left navbar-link">Site Log</a>
+        <iframe src="https://ghbtns.com/github-btn.html?user=retsamff&repo=ffrk-bottle&type=fork&count=true" frameborder="0" scrolling="0" width="100px" height="20px" class="navbar-text navbar-right"></iframe>
+        <a href="http://glyphicons.com/" class="navbar-text navbar-right navbar-link">Glyphicons</a>
       </div><!-- /.container-fluid -->
     </nav><!-- /.navbar-static-bottom -->
     {% block extra_body %}{% endblock extra_body %}
