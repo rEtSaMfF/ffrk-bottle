@@ -248,7 +248,7 @@ class About(object):
             'title': 'About',
             'body': 'A FINAL FANTASY Record Keeper Database',
             #'items': ('items{}'.format(i) for i in range(5)),
-            'footer': '*Work in progress',
+            'footer': '*Work in progress<iframe src="https://ghbtns.com/github-btn.html?user=retsamff&amp;repo=ffrk-bottle&amp;type=fork&amp;count=true" scrolling="0" class="pull-right" frameborder="0" height="20px" width="100px"></iframe>',
         },
     )
 
