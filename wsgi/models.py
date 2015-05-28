@@ -907,10 +907,10 @@ ATTRIBUTE_ID = {
     105: 'Water',
     106: 'Holy',
     107: 'Dark',
-    108: 'Poison',
+    108: 'Poison (Bio)',
 
     # Status
-    200: 'Poison',
+    200: 'Poison (Status)',
     201: 'Silence',
     202: 'Paralysed',
     203: 'Confuse',
@@ -1045,6 +1045,7 @@ class Enemy(BetterBase):
     frontend_columns = (
         ('name', 'Name'),
         ('is_sp_enemy', 'Boss'),
+        ('event_id', 'Event ID'),
     )
 
     @property

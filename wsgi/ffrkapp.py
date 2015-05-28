@@ -132,6 +132,15 @@ def home(category=None):
     # Do we need an abort here?
 
 
+@app.get('/calc', name='calc')
+@app.get('/calculator', name='calculator')
+@view('calc.html')
+def calc():
+    '''
+    Render a damange calculator.
+    '''
+    return {}
+
 @app.get('/dungeon', name='dungeon')
 @app.get('/dungeons', name='dungeons')
 @view('dungeons.html')
@@ -148,10 +157,10 @@ def dungeons():
         ('name', 'Name'),
         ('type', 'Type'),
         ('conditions',
-         'Conditions <span title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
+         'Conditions <span data-container="body" data-toggle="tooltip" title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
         ('stamina', 'Stamina'),
         ('shards',
-         'Shards <span title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
+         'Shards <span data-container="body" data-toggle="tooltip" title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
         ('prizes', 'Rewards'),
     )
 

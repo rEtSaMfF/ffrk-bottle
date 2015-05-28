@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Damage Calculator{% endblock title %}
+
+{% block extra_head %}{% endblock extra_head %}
+
+{% block extra_body %}<script src="{{ url('static', filepath='js/base.min.js') }}"></script>{% endblock extra_body %}
+
+{% block extra_javascript %}$(document).ready(function () {
+    $("#calc")[0].reset();
+    $("#attack").keyup(function(e) {
+      set_damage();
+    });
+    $("#defense").keyup(function(e) {
+      set_damage();
+    });
+    $("#calc-button").submit(function(e){
+      set_damage();
+    }).submit();
+  });{% endblock extra_javascript %}
+
+{% block content %}
+<div class="jumbotron">
+  <h1>Damage Calculator</h1>
+  <form class="form-horizontal" id="calc">
+    <div class="form-group">
+      <label for="attack" class="col-sm-4 control-label">Your ATK or MAG</label>
+      <div class="col-sm-4">
+        <input type="number" class="form-control" id="attack" value="100">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="defense" class="col-sm-4 control-label">Target DEF or RES</label>
+      <div class="col-sm-4">
+        <input type="number" class="form-control" id="defense" value="100">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="p-damage" class="col-sm-4 control-label">Attack Damage</label>
+      <div class="col-sm-4">
+        <input class="form-control" id="p-damage" readonly>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="b-damage" class="col-sm-4 control-label">Boost Attack Damage</label>
+      <div class="col-sm-4">
+        <input class="form-control" id="b-damage" readonly>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="m-damage" class="col-sm-4 control-label">Base Magic Damage</label>
+      <div class="col-sm-4">
+        <input class="form-control" id="m-damage" readonly>
+      </div>
+    </div>
+    <button id="calc-button" class="btn btn-default" type="button">Calculate</button>
+  </form>
+</div>
+{% endblock content %}
