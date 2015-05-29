@@ -61,6 +61,12 @@ def statics(filepath):
     return static_file(filepath, root=root)
 
 
+@app.get('/robots.txt')
+def robots():
+    root = os.path.join('wsgi', 'static')
+    return static_file('robots.txt', root=root)
+
+
 # 2015-05-20
 # Do not change the url routes until we can use bottle.get_url() in models
 #@app.get('/id/<iden>', name='main')
