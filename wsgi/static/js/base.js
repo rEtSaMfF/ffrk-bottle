@@ -1,7 +1,21 @@
 function inspect_formatter(value, row, index) {
     if ("search_id" in row) {
-        return '<a href="/'+row["search_id"]+'"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span><span class="sr-only">Inspect</span></a>';
+        return '<a href="/' + row["search_id"] + '"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span><span class="sr-only">Inspect</span></a>';
     }
+}
+
+function super_formatter(value, row, index) {
+    if (value >= 1427328000)
+        return '<abbr title="' + moment.tz(value, "X", "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
+    if (value == row["name"] && "search_id" in row)
+        return '<a href="/' + row["search_id"] + '">' + value + '</a>';
+    var values = Array(row["timestamp"], row["opened_at"], row["closed_at"], row["kept_out_at"]);
+    if (values.indexOf(value) != -1)
+        return '<abbr title="' + moment.tz(value, "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
+    return value;
+}
+
+function calculate_atk(hp, def, physical) {
 }
 
 function calculate_damage(atk, def, physical, boost) {

@@ -6,8 +6,7 @@
 
 {% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
 <script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
-<script src="{{ url('static', filepath='js/base.min.js') }}"></script>
-{% endblock extra_body %}
+<script src="{{ url('static', filepath='js/bootstrap-table-mobile.min.js') }}"></script>{% endblock extra_body %}
 
 {% block info_alert %}Click a "panel" heading to expand its content.{% endblock info_alert %}
 
@@ -113,12 +112,15 @@
         data-page-list="[10, 25, 50, 100, All]"
         data-show-toggle="true"
         data-key-events="true"
+        data-mobile-responsive="true"
+        data-check-on-init="true"
+        data-min-width="640"
       >
         <thead>
           <tr>
             <th data-width="25" data-formatter="inspect_formatter"></th>
             {% for c in tab['columns'] %}
-            <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
+            <th data-field="{{ c[0] }}" data-sortable="true" data-formatter="super_formatter">{{ c[1] }}</th>
             {% endfor %}
           </tr>
         </thead>

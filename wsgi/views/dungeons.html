@@ -6,7 +6,7 @@
 
 {% block extra_body %}<script src="{{ url('static', filepath='js/bootstrap-table.min.js') }}"></script>
 <script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
-<script src="{{ url('static', filepath='js/base.min.js') }}"></script>{% endblock extra_body %}
+<script src="{{ url('static', filepath='js/bootstrap-table-mobile.min.js') }}"></script>{% endblock extra_body %}
 
 {% block info_alert %}You may double click a row to remove it from the table.{% endblock info_alert %}
 {% block extra_javascript %}$(document).ready(function () {
@@ -63,6 +63,9 @@
   data-show-toggle="true"
   data-search="true"
   data-key-events="true"
+  data-mobile-responsive="true"
+  data-check-on-init="true"
+  data-min-width="640"
 >
   <thead>
     <tr>
