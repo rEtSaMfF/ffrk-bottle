@@ -15,10 +15,12 @@ from wsgi import models
 
 ### BOTTLE INIT START ###
 app = application = Bottle()
-app.debug = True
+app.debug = False
+
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 2
 
-TEMPLATE_PATH.insert(0, './wsgi/views/')
+TEMPLATE_PATH.insert(0, os.path.join('wsgi', 'views'))
+
 
 @app.error(500)
 @app.error(403)
@@ -28,7 +30,10 @@ def error404(e):
     # e is a bottle.HTTPError
     return {'error': e.body}
 
+
 Jinja2Template.defaults['url'] = app.get_url
+Jinja2Template.defaults['get_active_events'] = models.get_active_events
+Jinja2Template.defaults['get_content_dates'] = models.get_content_dates
 ### BOTTLE INIT END ###
 
 
@@ -157,6 +162,7 @@ def dungeons():
     '''
     content = request.GET.get('content', '')
     event = request.GET.get('event', '')
+    world_id = request.GET.get('world', '') or request.GET.get('world_id', '')
     columns = (
         ('challenge_level', 'Difficulty'),
         ('world_name', 'Realm'),
@@ -170,7 +176,8 @@ def dungeons():
         ('prizes', 'Rewards'),
     )
 
-    context = {'columns': columns, 'content': content, 'event': event}
+    context = {'columns': columns, 'content': content,
+               'event': event, 'world_id': world_id}
     try:
         return context
     except TemplateSyntaxError as e:
@@ -194,7 +201,8 @@ def json_dungeons():
 
     content = request.GET.get('content')
     event = request.GET.get('event')
-    dungeons = models.get_dungeons(content, event)
+    world_id = request.GET.get('world') or request.GET.get('world_id')
+    dungeons = models.get_dungeons(content, event, world_id)
 
     if dungeons:
         outlist = []

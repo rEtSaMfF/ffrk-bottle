@@ -73,12 +73,17 @@
               <ul class="dropdown-menu" role="menu">
                 <li><a href="{{ url('home') }}?category=worlds">World & Event listing</a></li>
                 <li class="divider"></li>
-                <li><a href="{{ url('dungeons') }}?content=all">All Dungeons</a></li>
-                {# TODO 2015-05-18
-                   Populate this <ul> from the database and include the dates #}
-                <li><a href="{{ url('dungeons') }}?content=latest">Latest Dungeons</a></li>
+                {% for date in get_content_dates() %}
+                {% if loop.first %}
+                <li><a href="{{ url('dungeons') }}?content={{ loop.index }}">All dungeons (since {{ date.strftime('%b %d, %Y') }})</a></li>
+                {% else %}
+                <li><a href="{{ url('dungeons') }}?content={{ loop.index }}">Dungeons added since {{ date.strftime('%b %d, %Y') }}</a></li>
+                {% endif %}
+                {% endfor %}
                 <li class="divider"></li>
-                <li><a href="{{ url('dungeons') }}?event=1&content=latest">Latest Event Dungeons</a></li>
+                {% for event in get_active_events() %}
+                <li><a href="{{ url('dungeons') }}?world_id={{ event.id }}">{{ event.name }}</a></li>
+                {% endfor %}
               </ul>
             </li>
             {% for c in ('enemies', ) %}

@@ -11,7 +11,7 @@
 {% block info_alert %}You may double click a row to remove it from the table.{% endblock info_alert %}
 {% block extra_javascript %}$(document).ready(function () {
     // These two function calls fix the table header resize
-    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?event={{ event }}&content={{ content }}"});
+    $("#main-table").bootstrapTable("refresh", {url: "{{ url('json_dungeons') }}?event={{ event }}&content={{ content }}&world_id={{ world_id }}"});
     $(window).resize(function () {
       $("#main-table").bootstrapTable("resetView");
     });

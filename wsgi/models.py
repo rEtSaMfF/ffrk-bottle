@@ -481,6 +481,26 @@ class World(BetterBase):
     def __repr__(self):
         return '[{}] {}'.format(WORLD_TYPE[self.world_type], self.name)
 
+def get_active_events(now=None):
+    '''
+    Return an iterable of the current active events.
+
+    May return events active at the optional now kwarg datetime.
+    '''
+
+    events = []
+    with session_scope() as session:
+        q = session.query(World)\
+                   .filter(World.world_type == 2)\
+                   .order_by(World.opened_at)
+
+        if now is None:
+            now = arrow.now()
+
+        events = q.filter(World.opened_at <= now)\
+                  .filter(World.closed_at > now).all()
+        session.expunge_all()
+    return events
 
 PRIZE_TYPE = {
     1: 'Completion Reward',
@@ -713,23 +733,74 @@ def find_dungeons_with_no_battles():
         for dungeon in dungeons:
             logging.warning('{} has no battles'.format(dungeon))
 
-def get_dungeons(content=None, event=None):
+def find_battles_with_no_conditions(boss=False):
     '''
-    Return a list of dungeons corresponding to a main content update.
+    Output which battles have no conditions.
+    '''
+    # TODO 2015-05-29
+    # Output boss battles with only 3 conditions.
+    with session_scope() as session:
+        battles = session.query(Battle)\
+                         .filter(~Battle.conditions.any())
+        for battle in battles.all():
+            logging.warning('{} has no conditions'.format(battle.id))
+
+def get_content_dates(event=None):
+    '''
+    Return an iterable of the main content update dates.
+    '''
+    dates = ()
+    with session_scope() as session:
+        world_query = session.query(World)
+        if event:
+            worlds = world_query.filter(World.world_type == 2)
+        else:
+            worlds = world_query.filter(World.world_type == 1)
+        world_ids = (i.id for i in worlds)
+        dungeons = session.query(Dungeon)\
+                          .filter(Dungeon.world_id.in_(world_ids))\
+                          .options(load_only(Dungeon.opened_at))\
+                          .order_by(Dungeon.opened_at)\
+                          .group_by(Dungeon.opened_at).all()
+        # List not generator because I need the length
+        dates = [d.opened_at for d in dungeons]
+        session.expunge_all()
+    return dates
+
+def get_dungeons(content=None, event=None, world_id=None):
+    '''
+    Return an iterable of dungeons corresponding to a main content update.
 
     A content of 1 (or less) will return all dungeons.
     A null content or content greater than the number of content patches will
     return the latest batch only.
     '''
+    try:
+        world_id = int(world_id)
+    except (ValueError, TypeError):
+        world_id = None
+    if world_id is not None:
+        dungeons = ()
+        with session_scope() as session:
+            # DetachedInstanceError
+            #world = session.query(World).filter(World.id == world_id).one()
+            #dungeons = world.dungeons
+            dungeons = session.query(Dungeon)\
+                       .options(subqueryload(Dungeon.world))\
+                       .options(subqueryload(Dungeon.prizes))\
+                       .options(subqueryload(Dungeon.battles))\
+                       .filter(Dungeon.world_id == world_id)\
+                       .order_by(Dungeon.challenge_level, Dungeon.id).all()
+            session.expunge_all()
+        return dungeons
+
     if content == 'all':
         content = 0
     if content == 'latest':
         content = sys.maxsize
     try:
         content = int(content)
-    except ValueError:
-        content = sys.maxsize
-    except TypeError:
+    except (ValueError, TypeError):
         content = sys.maxsize
 
     dungeons = []
@@ -753,20 +824,16 @@ def get_dungeons(content=None, event=None):
             dungeons = dungeon_query.all()
         else:
             # else we want to start from a specific content update
-            # We have get the opened_at from temp_dungeons instead of worlds
-            # because the new content might not start with a new World.
-            # Sort and group the dungeons
-            temp_dungeons = dungeon_query\
-                            .order_by(Dungeon.opened_at)\
-                            .group_by(Dungeon.opened_at).all()
+            # Get the dates dungeons were opened_at
+            dates = get_content_dates(event=event)
             # If someone is asking for content from the future return the
             # latest content update only
-            content = min(content, len(temp_dungeons))
+            content = min(content, len(dates))
             # Subtract one from the content number because we count the original
             # content as "1" and not "0", also avoid IndexError
             content -= 1
             # Get the datetime this update was released
-            opened_at = temp_dungeons[content].opened_at
+            opened_at = dates[content]
             # Now we can finally get all the dungeons released after this time
             dungeons = dungeon_query.filter(
                 Dungeon.opened_at >= opened_at)\
