@@ -8,29 +8,27 @@ import logging
 import time
 import traceback
 
+import arrow
+
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
     ForeignKey, Table, desc, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.types import TIMESTAMP, DateTime
+from sqlalchemy.types import TIMESTAMP
+from sqlalchemy_utils import ArrowType
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 from sqlalchemy.ext.declarative import declarative_base as real_declarative_base
 from sqlalchemy.orm import sessionmaker, load_only, relationship, backref,\
     joinedload, subqueryload, lazyload
 
-from contextlib import contextmanager
-from datetime import datetime
-from humanize import naturalday, naturaltime
-
-
-# TODO 2015-05-11
-# Change all DateTime columns to TIMESTAMP
 
 # TODO 2015-05-19
 # Improve injection attack protection
 # Basically escape every String column
 
+
 ### SQLALCHEMY INIT START ###
-# Make this a class decorator
 declarative_base = lambda cls: real_declarative_base(cls=cls)
 
 @declarative_base
@@ -109,16 +107,22 @@ class BetterBase(object):
         return json.dumps(self.dict(),
                           default=default_encode, separators=(',',':'))
 
+
 def default_encode(obj):
     if isinstance(obj, decimal.Decimal):
         return u'{:.2f}'.format(self._value)
-    if isinstance(obj, datetime):
-        if obj.utcoffset() is not None:
-            obj = obj - obj.utcoffset()
+    if isinstance(obj, arrow.arrow.Arrow):
+        return obj.for_json()
+    if isinstance(obj, arrow.arrow.datetime):
+        return arrow.get(obj).for_json()
+        #return arrow.get(obj).timestamp
+        #if obj.utcoffset() is not None:
+        #    obj = obj - obj.utcoffset()
 
-        obj = obj.replace(tzinfo=None)
-        return (obj - datetime(1970,1,1)).total_seconds()
+        #obj = obj.replace(tzinfo=None)
+        #return (obj - arrow.arrow.datetime(1970, 1, 1)).total_seconds()
     raise TypeError('{} is not JSON serializable'.format(obj))
+
 
 engine = create_engine(
     'mysql+pymysql://{}:{}@{}:{}/{}'.format(
@@ -129,6 +133,7 @@ engine = create_engine(
         'ffrk',
     ), pool_recycle=3600)
 create_session = sessionmaker(bind=engine)
+
 
 # I do not use this plugin
 '''
@@ -142,6 +147,7 @@ plugin = sqlalchemy.Plugin(
     use_kwargs=False
 )
 '''
+
 
 @contextmanager
 def session_scope():
@@ -159,6 +165,7 @@ def session_scope():
         logging.error('exc_info=True', exc_info=True)
     finally:
         session.close()
+
 
 # TODO 2015-05-08
 # aaargh this
@@ -181,6 +188,9 @@ if False:
         logger.debug('Query Complete!')
         logger.debug('Total Time: {:f}'.format(total))
 ### SQLALCHEMY INIT END ###
+
+
+STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
 
 
 # 2015-04-28 not used now
@@ -327,7 +337,8 @@ class Character(BetterBase):
 class Log(BetterBase):
     __tablename__ = 'log'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(TIMESTAMP,
+                       default=arrow.arrow.datetime.utcnow, nullable=False)
     log = Column(String(length=256), nullable=False)
     # I want a way to reference the objects in this log but that is not too easy
 
@@ -358,9 +369,10 @@ class World(BetterBase):
     name = Column(String(length=32), nullable=False)
 
     series_id = Column(Integer, nullable=False)
-    opened_at = Column(DateTime, nullable=False)
-    closed_at = Column(DateTime, nullable=False)
-    kept_out_at = Column(DateTime, nullable=False)
+    opened_at = Column(ArrowType, nullable=False)
+    # Worlds_1.opened_at = 2014-05-01T06:00:00+00:00
+    closed_at = Column(ArrowType, nullable=False)
+    kept_out_at = Column(ArrowType, nullable=False)
     world_type = Column(TINYINT, nullable=False)
 
     dungeons = relationship('Dungeon', backref='world')
@@ -395,31 +407,46 @@ class World(BetterBase):
     def generate_main_panels(self):
         main_stats = []
         for k, v in self.frontend_columns:
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
+            attr = self.__getattribute__(k)
+            if isinstance(attr, (arrow.arrow.Arrow, arrow.arrow.datetime)):
+                main_stats.append(
+                    '{}: <abbr title="{}" data-livestamp="{}"></abbr>'.format(
+                        v,
+                        attr.strftime(STRFTIME),
+                        attr
+                    )
+                )
+            else:
+                main_stats.append('{}: {}'.format(v, attr))
 
-        now = datetime.now()
+        now = arrow.now()
         if now < self.opened_at:
             main_stats.append(
-                '<span title="{}">{} will be available {}</span>'.format(
-                    self.opened_at,
+                '{} will be available <abbr title="{}" data-livestamp="{}"></abbr>.'\
+                .format(
                     WORLD_TYPE[self.world_type],
-                    naturaltime(self.opened_at)
+                    self.opened_at.strftime(STRFTIME),
+                    self.opened_at
                 )
             )
         if now > self.closed_at:
             # All events seem to close_at three days after we are kept_out_at
             # even though there is no redemption period for "challenge" types
             main_stats.append(
-                '<span title="{}">{} ended {}</span>'.format(
-                    self.closed_at,
+                '{} closed <abbr title="{}" data-livestamp="{}"></abbr>.'\
+                .format(
                     WORLD_TYPE[self.world_type],
-                    naturaltime(self.closed_at)
+                    self.closed_at.strftime(STRFTIME),
+                    self.closed_at
                 )
             )
         if now < self.kept_out_at and self.world_type == 2:
             main_stats.append(
-                '<span title="{}">Event will end {}</span>'.format(
-                    self.kept_out_at, naturaltime(self.kept_out_at)
+                '{} will end <abbr title="{}" data-livestamp="{}"></abbr>.'\
+                .format(
+                    WORLD_TYPE[self.world_type],
+                    self.kept_out_at.strftime(STRFTIME),
+                    self.kept_out_at
                 )
             )
 
@@ -427,15 +454,18 @@ class World(BetterBase):
             {
                 'title': 'Main Stats',
                 'items': main_stats,
-                'footer': '<span class="glyphicon glyphicon-asterisk" aria-hidden="true"></span>Time zones to be implemented.',
+                #'footer': '<span class="glyphicon glyphicon-asterisk" aria-hidden="true"></span>Local time zones to be implemented.',
             },
         )
 
     def __init__(self, **kwargs):
-        kwargs['world_type'] = kwargs['type']
-        kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
-        kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
-        kwargs['kept_out_at'] = datetime.fromtimestamp(kwargs['kept_out_at'])
+        self.world_type = kwargs['type']
+        #kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
+        #kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
+        #kwargs['kept_out_at'] = datetime.fromtimestamp(kwargs['kept_out_at'])
+        kwargs['opened_at'] = arrow.get(kwargs['opened_at'])
+        kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
+        kwargs['kept_out_at'] = arrow.get(kwargs['kept_out_at'])
         for i in (
             'bgm',
             'door_image_path',
@@ -512,8 +542,11 @@ class Dungeon(BetterBase):
     dungeon_type = Column(TINYINT, nullable=False)
     challenge_level = Column(SMALLINT, nullable=False)
 
-    opened_at = Column(DateTime, nullable=False)
-    closed_at = Column(DateTime, nullable=False)
+    opened_at = Column(ArrowType, nullable=False)
+    # Dungeons_1.opened_at = 2014-05-01T06:00:00+00:00
+    # Dungeons_2.opened_at = 2014-01-01T06:00:00+00:00
+    # Dungeons_3.opened_at = 2014-09-17T03:00:00+00:00
+    closed_at = Column(ArrowType, nullable=False)
     prologue = Column(String(length=1024), nullable=True)
     epilogue = Column(String(length=1024), nullable=True)
 
@@ -640,8 +673,10 @@ class Dungeon(BetterBase):
 
     def __init__(self, **kwargs):
         kwargs['dungeon_type'] = kwargs['type']
-        kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
-        kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
+        #kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
+        #kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
+        kwargs['opened_at'] = arrow.get(kwargs['opened_at'])
+        kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
         kwargs['epilogue'] = kwargs['epilogue'].encode(
             sys.stdout.encoding, errors='ignore')
         kwargs['prologue'] = kwargs['prologue'].encode(
@@ -936,10 +971,10 @@ ATTRIBUTE_ID = {
     223: 'Curse',
     224: 'Slownumb',
     225: 'Blink',
-    226: 'Water Imp',
-    227: 'Vanish',
-    228: 'Porky',
-    229: 'Sap',
+    #226: 'Water Imp',
+    #227: 'Vanish',
+    #228: 'Porky',
+    #229: 'Sap',
 }
 
 FACTOR = {
@@ -1699,7 +1734,7 @@ def import_battle_list(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
-def import_world(data=None, filepath=''):
+def import_world(data=None, filepath='', ask=False):
     '''
     /dff/world/dungeons
     '''
@@ -2007,16 +2042,14 @@ def import_recipes(data=None, filepath=''):
     success = False
     with session_scope() as session:
         recipes = data['recipe']
-        for grades in recipes.itervalues():
-            for a in grades.itervalues():
-                id = a['ability_id']
-                grade = a['grade']
+        for grades in recipes.values():
+            for a in grades.values():
                 new_ability = session.query(Ability).filter_by(
-                    ability_id=id, grade=grade).first()
+                    ability_id=a['ability_id'], grade=a['grade']).first()
                 if new_ability is None:
                     new_costs = []
                     for material_id, count in\
-                        a['material_id_2_num'].iteritems():
+                        a['material_id_2_num'].items():
                         with session.no_autoflush:
                             material = session.query(Material).filter_by(
                                 id=material_id).one()
@@ -2029,10 +2062,47 @@ def import_recipes(data=None, filepath=''):
                     new_log = Log(log='Create Ability({})'.format(new_ability))
                     session.add_all((new_ability, new_log))
                     session.commit()
-                #elif new_ability.required_gil < a['required_gil']
+                elif new_ability.required_gil == 32767 and\
+                new_ability.required_gil < a['required_gil']:
+                    new_ability.required_gil = a['required_gil']
+                    new_log = Log(
+                        log='Update Ability({}).required_gil to {}'.format(
+                            new_ability, new_ability.required_gil
+                        )
+                    )
+                    session.add(new_log)
+                    session.commit()
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
+    return success
+
+def import_ability_upgrade(data=None, filepath=''):
+    '''
+    /dff/ability/upgrade
+    '''
+    if data is None or not isinstance(data, dict):
+        if not filepath:
+            raise ValueError('One kwarg of data or filepath is required.')
+        with open(filepath) as infile:
+            data = json.load(infile)
+
+    success = False
+    with session_scope() as session:
+        a = data['upgraded_ability']
+        old_ability = session.query(Ability).filter_by(
+            ability_id=a['ability_id'], grade=a['grade']).first()
+        if old_ability is None:
+            logging.error('How are we upgrading an ability that we do not have in our database?')
+        elif old_ability.required_gil == 32767 and\
+        old_ability.required_gil < a['required_gil']:
+            old_ability.required_gil = a['required_gil']
+            new_log = Log(log='Update Ability({}).required_gil'.format(
+                old_ability)
+            )
+            session.add(new_log)
+            session.commit()
+        success = True
     return success
 
 def import_enhance_evolve(data=None, filepath=''):
