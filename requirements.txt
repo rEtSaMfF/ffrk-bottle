@@ -1,5 +1,7 @@
 bottle
 bottle-sqlalchemy
+sqlalchemy
+sqlalchemy-utils
 PyMySQL
 tabulate
 humanize
