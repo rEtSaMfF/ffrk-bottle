@@ -30,8 +30,10 @@ function super_formatter(value, row, index) {
     if (key == "max_hp") {
         var hp = row["max_hp"];
         hp = Math.min(hp, 9999);
+        var atk = calculate_atk(hp, row["defense"], true);
+        var mag = calculate_atk(hp, row["defense"], false);
 
-        return value + ' <span data-container="body" data-toggle="tooltip" title="You need ' + calculate_atk(hp, row["defense"], true) + ' ATK in order to do ' + hp + ' damage." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>' + ' <span data-container="body" data-toggle="tooltip" title="You need ' + calculate_atk(hp, row["mdef"], false) + ' MAG/MND in order to do ' + hp + ' damage." class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>';
+        return value + ' <a tabindex="0" class="btn btn-xs btn-default" role="button" data-toggle="popover" title="Physical" data-content="You need ' + atk + ' ATK in order to do ' + hp + ' damage."><span data-container="body" data-toggle="tooltip" title="You need ' + atk + ' ATK in order to do ' + hp + ' damage." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span></a> <a tabindex="0" class="btn btn-xs btn-default" role="button" data-toggle="popover" title="Magical" data-content="You need ' + mag + ' MAG/MND in order to do ' + hp + ' base damage."><span data-container="body" data-toggle="tooltip" title="You need ' + mag + ' MAG/MND in order to do ' + hp + ' base damage." class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></a>';
     }
 
     return value;

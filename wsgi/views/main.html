@@ -35,6 +35,7 @@
       //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
       $('#getError').hide();
       $('[data-toggle="tooltip"]').tooltip();
+      $('[data-toggle="popover"]').popover();
     });
     $("#{{ tab['id'] }}-table").on("load-error.bs.table", function () {
       $("#getError").show()
