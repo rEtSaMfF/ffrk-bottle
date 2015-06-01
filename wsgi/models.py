@@ -2185,8 +2185,8 @@ def import_enhance_evolve(data=None, filepath=''):
 
     success = False
     with session_scope() as session:
-        for e in (data['new_src_user_equipment'],
-                  data['old_src_user_equipment'],):
+        for e in (data['old_src_user_equipment'],
+                  data['new_src_user_equipment'],):
             if check_exists(e.get('equipment_id'),
                             e.get('level'), e.get('rarity')):
                 continue
