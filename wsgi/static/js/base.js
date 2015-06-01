@@ -4,18 +4,55 @@ function inspect_formatter(value, row, index) {
     }
 }
 
+function get_key(obj, value) {
+    // Given a json object and a value, get the key.
+    // Does not work for non-unique values.
+    for (i in obj) {
+        if (obj[i] == value)
+            return i;
+    }
+    // value not found in obj
+    return '';
+}
+
 function super_formatter(value, row, index) {
     if (value >= 1427328000)
         return '<abbr title="' + moment.tz(value, "X", "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
-    if (value == row["name"] && "search_id" in row)
+
+    var key = get_key(row, value);
+
+    if (key == "name" && "search_id" in row)
         return '<a href="/' + row["search_id"] + '">' + value + '</a>';
-    var values = Array(row["timestamp"], row["opened_at"], row["closed_at"], row["kept_out_at"]);
-    if (values.indexOf(value) != -1)
+
+    if (["timestamp", "opened_at", "closed_at"].indexOf(key) != -1)
         return '<abbr title="' + moment.tz(value, "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
+
+    if (key == "max_hp") {
+        var hp = row["max_hp"];
+        hp = Math.min(hp, 9999);
+
+        return value + ' <span data-container="body" data-toggle="tooltip" title="You need ' + calculate_atk(hp, row["defense"], true) + ' ATK in order to do ' + hp + ' damage." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>' + ' <span data-container="body" data-toggle="tooltip" title="You need ' + calculate_atk(hp, row["mdef"], false) + ' MAG/MND in order to do ' + hp + ' damage." class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>';
+    }
+
     return value;
 }
 
 function calculate_atk(hp, def, physical) {
+    var atk = 0;
+    var tmp = 0;
+    hp = Math.min(hp, 9999);
+    if (physical) {
+        tmp = hp * Math.pow(def, 0.5);
+        atk = Math.pow(tmp, 1/1.8);
+        if (Math.pow(atk, 1.3) > 2000)
+            atk = Math.pow(tmp / 2000, 1/0.5);
+        return Math.ceil(atk);
+    }
+    tmp = hp * Math.pow(def, 0.5);
+    atk = Math.pow(tmp, 1/1.65);
+    if (Math.pow(atk, 1.15) > 2000)
+        atk = Math.pow(tmp / 2000, 1/0.5);
+    return Math.ceil(atk);
 }
 
 function calculate_damage(atk, def, physical, boost) {
@@ -50,5 +87,5 @@ function set_damage() {
 }
 
 $(function () {
-    $('[data-toggle="tooltip"]').tooltip()
+    $('[data-toggle="tooltip"]').tooltip();
 });

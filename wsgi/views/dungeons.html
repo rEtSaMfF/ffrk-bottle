@@ -23,6 +23,7 @@
       // And automatically hide the alert
       //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
       $('#getError').hide();
+      $('[data-toggle="tooltip"]').tooltip();
     }).on("load-error.bs.table", function () {
       //$("div.fixed-table-body").scrollTop($("#main-table").height());
       $("#getError").show()
