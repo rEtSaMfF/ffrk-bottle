@@ -240,10 +240,11 @@ def json_dungeons():
             if not conditions_present:
                 conditions.append(
                     'We have not imported any conditions for this dungeon.')
-                row['stamina'] = 'Unknown'
             elif not all_conditions_present:
                 conditions.append(
                     'We are missing some conditions for this dungeon.')
+            if row['stamina'] == 0:
+                row['stamina'] = 'Unknown'
             row['conditions'] = '<br>'.join(conditions)
             outlist.append(row)
         return minify_json(outlist)
