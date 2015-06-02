@@ -223,13 +223,13 @@ def json_dungeons():
                     prizes.append(str(prize))
             row['shards'] = shards
             row['prizes'] = '<br>'.join(prizes)
-            stamina = 0
+            row['stamina'] = 0
             # This is repeated three times
             conditions = []
             conditions_present = False
             all_conditions_present = True
             for battle in dungeon.battles:
-                stamina += battle.stamina
+                row['stamina'] += battle.stamina
                 if not battle.conditions:
                     all_conditions_present = False
                 for c in battle.conditions:
@@ -237,7 +237,6 @@ def json_dungeons():
                     # Filter out the standard conditions
                     if c.condition_id not in (1001, 1002, 1004):
                         conditions.append(str(c))
-            row['stamina'] = stamina
             if not conditions_present:
                 conditions.append(
                     'We have not imported any conditions for this dungeon.')
@@ -245,7 +244,6 @@ def json_dungeons():
             elif not all_conditions_present:
                 conditions.append(
                     'We are missing some conditions for this dungeon.')
-                row['stamina'] = 'Incomplete'
             row['conditions'] = '<br>'.join(conditions)
             outlist.append(row)
         return minify_json(outlist)
