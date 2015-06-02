@@ -2254,20 +2254,24 @@ def get_by_id(id, all=False, enemy=False):
 
     with session_scope() as session:
         for m, c, o in (
-            (Material, Material.id, 'id'),
-            (World, World.id, 'id'),
-            (Dungeon, Dungeon.id, 'id'),
-            (Ability, Ability.ability_id, 'name'),
-            (Relic, Relic.equipment_id, 'level'),
-            (Battle, Battle.id, 'id'),
-            (Enemy, Enemy.param_id, 'lv'),
+            (Material, Material.id, ('id', )),
+            (World, World.id, ('id', )),
+            (Dungeon, Dungeon.id, ('id', )),
+            (Ability, Ability.ability_id, ('name', )),
+            (Relic, Relic.equipment_id, ('level', 'rarity')),
+            (Battle, Battle.id, ('id', )),
+            (Enemy, Enemy.param_id, ('lv', )),
         ):
+            q = session.query(m)
+            q = q.filter(c == id)
+            for i in o:
+                q = q.order_by(i)
             # joinedload('*') is slow
-            #q = session.query(m).filter(c == id).order_by(o).options(joinedload('*'))
-            q = session.query(m).filter(c == id).order_by(o).options(subqueryload('*'))
-            # lazyload('*') does not work the way I want it to work
-            #q = session.query(m).filter(c == id).order_by(o).options(lazyload('*'))
-            #q = session.query(m).filter(c == id).order_by(o)
+            #q = q.options(joinedload('*'))
+            q = q.options(subqueryload('*'))
+            # lazyload('*') is the default and does not work the way I want
+            #q = q.options(lazyload('*'))
+
             if all:
                 r = q.all()
                 if r:
