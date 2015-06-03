@@ -392,7 +392,7 @@ class Character(BetterBase):
         ('series_id', 'Series'),
     )
 
-    main_columns = frontend_columns + (
+    main_columns = (
         ('level', 'Level'),
         ('hp', 'HP'),
         ('atk', 'ATK'),

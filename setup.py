@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='FFRK',
-      version='0.12',
+      version='0.13',
       description='An FFRK Database',
       author='rEtSaM',
       author_email='calvin@retsam-games.com',
