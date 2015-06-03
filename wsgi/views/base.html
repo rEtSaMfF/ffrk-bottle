@@ -56,18 +56,18 @@
 
         <div class="collapse navbar-collapse" id="navbar-collapse-1">
           <ul class="nav navbar-nav">
-            {% for c in ('relics', 'materials', 'abilities') %}
-            <li class="dropdown">
-              <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">{{ c }}<span class="caret"></span></a>
-              <ul class="dropdown-menu" role="menu">
-                <li><a href="{{ url('home') }}?category={{ c }}">All</a></li>
-                <li class="divider"></li>
-                {% for r in range(1,6) %}
-                <li><a href="{{ url('home') }}?category={{ c }}&rarity={{ r }}">{{ r }}</a></li>
-                {% endfor %}
-              </ul>
+            {% for c in ('characters', 'relics') %}
+            <li>
+              <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
             </li>
             {% endfor %}
+            <li class="dropdown">
+              <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">abilities<span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                <li><a href="{{ url('home') }}?category=abilities" class="text-capitalize">abilities</a></li>
+                <li><a href="{{ url('home') }}?category=materials" class="text-capitalize">materials</a></li>
+              </ul>
+            </li>
             <li class="dropdown">
               <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">dungeons<span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">

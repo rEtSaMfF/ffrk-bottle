@@ -21,8 +21,19 @@ function super_formatter(value, row, index) {
 
     var key = get_key(row, value);
 
+    // This fails for "Core" characters
     if (key == "name" && "search_id" in row)
         return '<a href="/' + row["search_id"] + '">' + value + '</a>';
+
+    if (key == "image_path") {
+        var ret = '';
+        if ("search_id" in row)
+            ret += '<a href="/' + row["search_id"] + '">';
+        ret += '<img src="' + value + '" alt="' + row["name"] + '" title="' + row["name"] + '" class="img-responsive center-block">';
+        if ("search_id" in row)
+            ret += '</a>';
+        return ret;
+    }
 
     if (["timestamp", "opened_at", "closed_at"].indexOf(key) != -1)
         return '<abbr title="' + moment.tz(value, "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';

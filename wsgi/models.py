@@ -229,8 +229,10 @@ CATEGORY_ID = {
     'Bow': 10,
     'Instrument': 11,
     'Whip': 12,
-    'Thrown': 14,
+    'Thrown': 13,
     'Book': 14,
+
+    'Ball': 30,
 
     'Shield': 50,
     'Hat': 51,
@@ -260,6 +262,28 @@ CATEGORY_ID = {
     'Ninja': 13,
 }
 
+ABILITY_ID_NAME = {
+    1: 'Black Magic',
+    2: 'White Magic',
+    3: 'Summoning',
+    4: 'Spellblade',
+    5: 'Combat',
+    6: 'Support',
+    7: 'Celerity',
+    8: 'Dragoon',
+    9: 'Monk',
+    10: 'Thief',
+    11: 'Knight',
+    12: 'Samurai',
+    13: 'Ninja',
+}
+
+EQUIP_ID_NAME = {}
+for k, v in CATEGORY_ID.items():
+    if ABILITY_ID_NAME.get(v) == k:
+        continue
+    EQUIP_ID_NAME[v] = k
+
 WEAPON = 1
 ARMOR = 2
 ACCESSORY = 3
@@ -279,8 +303,56 @@ class About(object):
     )
 
 
-# I do not want to import these because the stats include equipment
-# But then again we may subtract those stats....
+class CharacterEquip(BetterBase):
+    __tablename__ = 'character_equip'
+    category_id = Column(TINYINT, primary_key=True, autoincrement=False)
+    equipment_type = Column(TINYINT, primary_key=True, autoincrement=False)
+    buddy_id = Column(Integer, primary_key=True, autoincrement=False)
+
+    def __init__(self, **kwargs):
+        known_factor = '100'
+        if kwargs['factor'] != known_factor:
+            logging.critical(
+                '{} has a non {} factor'.format(
+                    type(self).__name__, known_factor))
+        for i in (
+            'factor',
+        ):
+            if i in kwargs:
+                del(kwargs[i])
+        super(CharacterEquip, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return '{}'.format(
+            EQUIP_ID_NAME.get(
+                self.category_id,
+                'Unknown EquipmentCategory[{}]'.format(self.category_id)
+            )
+        )
+
+class CharacterAbility(BetterBase):
+    __tablename__ = 'character_ability'
+    category_id = Column(TINYINT, primary_key=True, autoincrement=False)
+    rarity = Column(TINYINT, nullable=False)
+    buddy_id = Column(Integer, primary_key=True, autoincrement=False)
+
+    def __init__(self, **kwargs):
+        for i in (
+            'name',
+        ):
+            if i in kwargs:
+                del(kwargs[i])
+        super(CharacterAbility, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return '[{}*] {}'.format(
+            self.rarity,
+            ABILITY_ID_NAME.get(
+                self.category_id,
+                'Unknown AbilityCategory[{}]'.format(self.category_id)
+            )
+        )
+
 class Character(BetterBase):
     __tablename__ = 'character'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -289,6 +361,7 @@ class Character(BetterBase):
     job_name = Column(String(length=32), nullable=False)
     description = Column(String(length=256), nullable=False)
     series_id = Column(Integer, nullable=False)
+    image_path = Column(String(length=64), nullable=False)
 
     level = Column(TINYINT, nullable=False)
     #level_max = Column(TINYINT, nullable=False)
@@ -313,10 +386,86 @@ class Character(BetterBase):
     series_mnd = Column(SMALLINT, nullable=False)
     series_spd = Column(SMALLINT, nullable=False)
 
-    #ability_category = 
-    # many-to-many
-    #equipment_category = 
-    # many-to-many
+    frontend_columns = (
+        ('image_path', 'Image'),
+        ('name', 'Name'),
+        ('series_id', 'Series'),
+    )
+
+    main_columns = frontend_columns + (
+        ('level', 'Level'),
+        ('hp', 'HP'),
+        ('atk', 'ATK'),
+        ('defense', 'DEF'),
+        ('acc', 'ACC'),
+        ('eva', 'EVA'),
+        ('matk', 'MAG'),
+        ('mdef', 'RES'),
+        ('mnd', 'MIND'),
+        ('spd', 'SPD'),
+        ('series_acc', 'RS ACC'),
+        ('series_atk', 'RS ATK'),
+        ('series_def', 'RS DEF'),
+        ('series_eva', 'RS EVA'),
+        ('series_matk', 'RS MAG'),
+        ('series_mdef', 'RS RES'),
+        ('series_mnd', 'RS MIND'),
+    )
+
+    @property
+    def search_id(self):
+        return self.buddy_id
+
+    @property
+    def extra_tabs(self):
+        return (
+            {
+                'id': 'stats',
+                'title': 'Stats by Level',
+                'search_id': self.search_id,
+                'columns': self.main_columns,
+            },
+        )
+
+    def generate_main_panels(self):
+        main_stats = []
+        for k, v in (
+            ('job_name', 'Class'),
+            ('series_id', 'Series'),
+        ):
+            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
+        self._main_panels = (
+            {
+                'title': self.name,
+                'body': '<a href="{0}"><img src="{0}" alt="{1}" title="{1}" class="img-responsive center-block"></a>'.format(
+                    self.image_path, self.name),
+                'items': main_stats,
+            },
+            {
+                'title': 'Equipment',
+                'items': self.get_equips(),
+            },
+            {
+                'title': 'Abilities',
+                'items': self.get_abilities(),
+            },
+        )
+
+    def get_abilities(self):
+        abilities = ()
+        with session_scope() as session:
+            abilities = session.query(CharacterAbility).filter(
+                CharacterAbility.buddy_id == self.buddy_id).all()
+            session.expunge_all()
+        return abilities
+
+    def get_equips(self):
+        equips = ()
+        with session_scope() as session:
+            equips = session.query(CharacterEquip).filter(
+                CharacterEquip.buddy_id == self.buddy_id).all()
+            session.expunge_all()
+        return equips
 
     def __init__(self, **kwargs):
         self.defense = kwargs['def']
@@ -326,6 +475,7 @@ class Character(BetterBase):
             self.name = 'Tyro'
         else:
             self.name = kwargs['name']
+        self.image_path = kwargs['image_path'].replace('/dff', '')
 
         for i in (
             'def',
@@ -1037,7 +1187,7 @@ ATTRIBUTE_ID = {
     # Status
     200: 'Poison (Status)',
     201: 'Silence',
-    202: 'Paralysed',
+    202: 'Paralysis',
     203: 'Confuse',
     204: 'Haste',
     205: 'Slow',
@@ -2115,9 +2265,40 @@ def import_party(data=None, filepath=''):
         buddies = data['buddies']
         for c in buddies:
             # Check if the Character() exists
-            if session.query(session.query(Character).filter(
-                    Character.buddy_id == c['buddy_id'],
-                    Character.level == c['level']).exists()).scalar():
+            old_character = session.query(Character).filter(
+                Character.buddy_id == c['buddy_id'],
+                Character.level == c['level']).first()
+            if old_character is not None:
+                for i, ec in c['equipment_category'].items():
+                    ce = session.query(CharacterEquip).filter(
+                        CharacterEquip.category_id == ec['category_id'],
+                        CharacterEquip.equipment_type == ec['equipment_type'],
+                        CharacterEquip.buddy_id == old_character.buddy_id)\
+                                                      .first()
+                    if ce is not None:
+                        continue
+                    ec['buddy_id'] = old_character.buddy_id
+                    ce = CharacterEquip(**ec)
+                    new_log = Log(
+                        log='Add {}({}) to {}({})'.format(
+                            type(ce).__name__, ce,
+                            type(old_character).__name__, old_character))
+                    session.add_all((ce, new_log))
+                for i, ac in c['ability_category'].items():
+                    ca = session.query(CharacterAbility).filter(
+                        CharacterAbility.category_id == ac['category_id'],
+                        CharacterAbility.buddy_id == old_character.buddy_id)\
+                                                        .first()
+                    if ca is not None:
+                        continue
+                    ac['buddy_id'] = old_character.buddy_id
+                    ca = CharacterAbility(**ac)
+                    new_log = Log(
+                        log='Add {}({}) to {}({})'.format(
+                            type(ca).__name__, ca,
+                            type(old_character).__name__, old_character))
+                    session.add_all((ca, new_log))
+                session.commit()
                 continue
             new_character = Character(**c)
             new_log = Log(log='Create {}({})'.format(
@@ -2149,11 +2330,10 @@ def import_dff(data=None, filepath=''):
     with session_scope() as session:
         equipments = data['equipment']
         for c in data.get('buddy', ()):
-            print (c['name'])
-            # Check if the Character() exists
-            if session.query(session.query(Character).filter(
-                    Character.buddy_id == c['buddy_id'],
-                    Character.level == c['level']).exists()).scalar():
+            old_character = session.query(Character).filter(
+                Character.buddy_id == c['buddy_id'],
+                Character.level == c['level']).first()
+            if old_character is not None:
                 continue
             okay = True
             # Check if the Character() is not in our party
@@ -2296,7 +2476,32 @@ def import_enhance_evolve(data=None, filepath=''):
             new_log = Log(log='Create Relic({})'.format(new_relic))
             session.add_all((new_relic, new_log))
             session.commit()
-        success = False
+        success = True
+    return success
+
+def import_grow(data=None, filepath=''):
+    '''
+    /dff/grow_egg/use
+    '''
+    if data is None or not isinstance(data, dict):
+        if not filepath:
+            raise ValueError('One kwarg of data or filepath is required.')
+        with open(filepath) as infile:
+            data = json.load(infile)
+
+    c = data['buddy']
+
+    success = False
+    with session_scope() as session:
+        if not session.query(session.query(Character).filter(
+                Character.buddy_id == c['buddy_id'],
+                Character.level == c['level']).exists()).scalar():
+            new_character = Character(**c)
+            new_log = Log(log='Create {}({})'.format(
+                type(new_character).__name__, new_character))
+            session.add_all((new_character, new_log))
+            session.commit()
+        success = True
     return success
 
 
@@ -2381,6 +2586,7 @@ def get_by_id(id, all=False, enemy=False):
             (Relic, Relic.equipment_id, ('level', 'rarity')),
             (Battle, Battle.id, ('id', )),
             (Enemy, Enemy.param_id, ('lv', )),
+            (Character, Character.buddy_id, ('level', )),
         ):
             q = session.query(m)
             q = q.filter(c == id)

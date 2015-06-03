@@ -61,6 +61,15 @@ def statics(filepath):
             root = os.path.join(root, ext)
         if filepath.startswith('{}/'.format(ext)):
             filepath = filepath[len('{}/'.format(ext)):]
+    '''
+    # Commented out because image paths should be perfect for apache mod_wsgi
+    for ext in ('png', ):
+        subfolder = 'image'
+        if filepath.endswith('.{}'.format(ext)):
+            root = os.path.join(root, subfolder)
+        if filepath.startswith('{}/'.format(subfolder)):
+            filepath = filepath[len('{}/'.format(subfolder)):]
+    '''
     logging.warning('Serving "{}" from the backend'.format(
         os.path.join(os.getcwd(), root, filepath)))
     return static_file(filepath, root=root)
@@ -128,6 +137,7 @@ def home(category=None):
         (('ability', 'abilities'), models.Ability.frontend_columns),
         (('world', 'worlds', 'realm', 'realms'), models.World.frontend_columns),
         (('log', 'logs'), models.Log.frontend_columns),
+        (('character', 'characters'), models.Character.frontend_columns),
     ):
         if category in c:
             columns = cs
@@ -314,6 +324,8 @@ def get_json():
             # request.GET.get('limit', 25)
             (('log', 'logs'),
              models.Log, models.Log.timestamp.desc(), 'id', True, 100, None),
+            (('character', 'characters'),
+             models.Character, models.Character.name, 'buddy_id', True, None, None),
         ):
             if category in c:
                 q = session.query(m).order_by(o).group_by(g).limit(l)
