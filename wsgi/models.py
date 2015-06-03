@@ -187,10 +187,12 @@ if False:
         total = time.time() - conn.info['query_start_time'].pop(-1)
         logger.debug('Query Complete!')
         logger.debug('Total Time: {:f}'.format(total))
+
+
+def make_tables():
+    BetterBase.metadata.create_all(engine)
+create_tables = make_tables
 ### SQLALCHEMY INIT END ###
-
-
-STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
 
 
 # 2015-04-28 not used now
@@ -212,41 +214,55 @@ def to_roman(n):
     return result
 '''
 
-WEAPON_CATEGORIES = (
-    'Axe',
-    'Ball',
-    'Book',
-    'Bow',
-    'Dagger',
-    'Fist',
-    'Hammer',
-    'Instrument',
-    'Katana',
-    'Rod',
-    'Spear',
-    'Staff',
-    'Sword',
-    'Thrown',
-    'Whip',
-)
+STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
 
-ARMOR_CATEGORIES = (
-    'Armor',
-    'Bracer',
-    'Hat',
-    'Helm',
-    'Light Armor',
-    'Robe',
-    'Shield',
-)
+CATEGORY_ID = {
+    'Dagger': 1,
+    'Sword': 2,
+    'Katana': 3,
+    'Axe': 4,
+    'Hammer': 5,
+    'Spear': 6,
+    'Fist': 7,
+    'Rod': 8,
+    'Staff': 9,
+    'Bow': 10,
+    'Instrument': 11,
+    'Whip': 12,
+    'Thrown': 14,
+    'Book': 14,
+
+    'Shield': 50,
+    'Hat': 51,
+    'Helm': 52,
+    'Light Armor': 53,
+    'Armor': 54,
+    'Robe': 55,
+    'Bracer': 56,
+
+    'Accessory': 80,
+
+    'Weapon Upgrade': 98,
+    'Armor Upgrade': 99,
+
+    'Black Magic': 1,
+    'White Magic': 2,
+    'Summoning': 3,
+    'Spellblade': 4,
+    'Combat': 5,
+    'Support': 6,
+    'Celerity': 7,
+    'Dragoon': 8,
+    'Monk': 9,
+    'Thief': 10,
+    'Knight': 11,
+    'Samurai': 12,
+    'Ninja': 13,
+}
 
 WEAPON = 1
 ARMOR = 2
 ACCESSORY = 3
-
-def make_tables():
-    BetterBase.metadata.create_all(engine)
-create_tables = make_tables
 
 
 # Should this be BetterBase?
@@ -263,12 +279,12 @@ class About(object):
     )
 
 
-'''
 # I do not want to import these because the stats include equipment
 # But then again we may subtract those stats....
 class Character(BetterBase):
     __tablename__ = 'character'
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    buddy_id = Column(Integer, nullable=False)
     name = Column(String(length=32), nullable=False)
     job_name = Column(String(length=32), nullable=False)
     description = Column(String(length=256), nullable=False)
@@ -303,18 +319,26 @@ class Character(BetterBase):
     # many-to-many
 
     def __init__(self, **kwargs):
-        kwargs['id'] = kwargs['buddy_id']
-        kwargs['defense'] = kwargs['def']
-        kwargs['description'] = kwargs['description'].encode(sys.stdout.encoding, errors='ignore')
+        self.defense = kwargs['def']
+        self.description = kwargs['description'].encode(
+            sys.stdout.encoding, errors='ignore')
+        if kwargs['job_name'] == 'Keeper':
+            self.name = 'Tyro'
+        else:
+            self.name = kwargs['name']
+
         for i in (
+            'def',
+            'description',
+            'name',
+
+            'id',
             'ability_1_id',
             'ability_2_id',
             'accessory_id',
             'weapon_id',
             'armor_id',
-            'buddy_id',
             'created_at',
-            'def',
             'exp',
             'row',
             'soul_strike_id',
@@ -331,7 +355,6 @@ class Character(BetterBase):
 
     def __repr__(self):
         return '{} ({})'.format(self.name, self.level)
-'''
 
 
 class Log(BetterBase):
@@ -1313,6 +1336,7 @@ class Ability(BetterBase):
     description = Column(String(length=256), nullable=False)
 
     rarity = Column(TINYINT, nullable=False)
+    category_id = Column(TINYINT, nullable=False)
     category_name = Column(String(length=32), nullable=False)
                   # ('Spellblade', 'Celerity', 'Combat', etc.)
     category_type = Column(TINYINT, nullable=False)
@@ -1389,9 +1413,9 @@ class Ability(BetterBase):
 
     def __init__(self, **kwargs):
         if kwargs['arg2'] or kwargs['arg3']:
-            logging.critical('\tAbility {} has additional args'.format(kwargs['name']))
+            logging.critical(
+                'Ability {} has additional args'.format(kwargs['name']))
         for i in (
-            'category_id',  # id for category_name
             'arg2',  # all zero
             'arg3',  # all zero
             'factor_category',  # all one
@@ -1587,9 +1611,9 @@ class Relic(BetterBase):
     series_mdef = Column(SMALLINT, nullable=False)
     series_mnd = Column(SMALLINT, nullable=False)
 
+    category_id = Column(TINYINT, nullable=False)
     category_name = Column(String(length=32), nullable=False)
     equipment_type = Column(TINYINT, nullable=False)    # 1:"Weapon", 2:"Armor", 3:"Accessory"
-    # "category_id": 80,                                # Do I care?
     # "allowed_buddy_id": 0,                            # This might be for specific characters only
     # "atk_ss_point_factor": 0,                         # I guess this increases the soul strike charge rate?
     # "def_ss_point_factor": 0,                         # I guess this increases the soul strike charge rate?
@@ -1688,7 +1712,6 @@ class Relic(BetterBase):
         kwargs['defense'] = kwargs['def']
 
         for i in (
-            "category_id",
             "allowed_buddy_id",
             "atk_ss_point_factor",
             "def_ss_point_factor",
@@ -2088,6 +2111,87 @@ def import_party(data=None, filepath=''):
             new_log = Log(log='Create Material({})'.format(new_material))
             session.add_all((new_material, new_log))
             session.commit()
+
+        buddies = data['buddies']
+        for c in buddies:
+            # Check if the Character() exists
+            if session.query(session.query(Character).filter(
+                    Character.buddy_id == c['buddy_id'],
+                    Character.level == c['level']).exists()).scalar():
+                continue
+            new_character = Character(**c)
+            new_log = Log(log='Create {}({})'.format(
+                type(new_character).__name__, new_character))
+            session.add_all((new_character, new_log))
+            session.commit()
+        success = True
+    logging.debug('{}(filepath="{}") end'.format(
+        sys._getframe().f_code.co_name, filepath))
+    return success
+
+def import_dff(data=None, filepath=''):
+    logging.debug('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
+    if data is None or not isinstance(data, dict):
+        if not filepath:
+            raise ValueError('One kwarg of data or filepath is required.')
+        with open(filepath) as infile:
+            data = json.load(infile)
+
+    # This is the series we are currently in
+    #series_id = data.get('dungeon_session', {})\
+    #                .get('party_status', {}).get('series_id', -1)
+    # Which we do not need
+
+    # This is a dict representing our current party
+    party = data.get('party', {}).get('slot_to_buddy_id', {})
+    success = False
+    with session_scope() as session:
+        equipments = data['equipment']
+        for c in data.get('buddy', ()):
+            print (c['name'])
+            # Check if the Character() exists
+            if session.query(session.query(Character).filter(
+                    Character.buddy_id == c['buddy_id'],
+                    Character.level == c['level']).exists()).scalar():
+                continue
+            okay = True
+            # Check if the Character() is not in our party
+            #if c['id'] not in party.values():
+            #    continue
+            # If we are doing import_party on dff we have to do equipments
+            for e_id in ('accessory_id', 'armor_id', 'weapon_id'):
+                e_id = c.get(e_id)
+                # Skip if we do not have anything equipped
+                if e_id == 0:
+                    continue
+                # Get the equipment
+                for equipment in equipments:
+                    if equipment.get('id') == e_id:
+                        break
+                if equipment.get('id') != e_id:
+                    logging.critical(
+                        'Equipment with id={} not found.'.format(e_id))
+                    logging.critical('Skipping this import.')
+                    okay = False
+                    break
+                keys = ('acc', 'atk', 'def', 'eva', 'matk', 'mdef', 'mnd')
+                # no 'hp', 'spd' as of 2015-06-03
+                # Remove the stats from both the Character() base and series
+                for k in keys:
+                    c[k] -= equipment[k]
+                    # Check if we are in the series
+                    if equipment['series_id'] == c['series_id']:
+                        c['series_{}'.format(k)]\
+                            -= equipment['series_{}'.format(k)]
+                    else:
+                        c['series_{}'.format(k)] -= equipment[k]
+            if okay:
+                new_character = Character(**c)
+                new_log = Log(log='Create {}({})'.format(
+                    type(new_character).__name__, new_character))
+                session.add_all((new_character, new_log))
+                session.commit()
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
@@ -2098,8 +2202,6 @@ def import_recipes(data=None, filepath=''):
     /dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
     '''
-    logging.debug('{}(filepath="{}") start'.format(
-        sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -2200,6 +2302,24 @@ def import_enhance_evolve(data=None, filepath=''):
 
 # Commented out because recordpeeker.handle_party_list() is superior.
 '''
+WEAPON_CATEGORIES = (
+    'Axe',
+    'Ball',
+    'Book',
+    'Bow',
+    'Dagger',
+    'Fist',
+    'Hammer',
+    'Instrument',
+    'Katana',
+    'Rod',
+    'Spear',
+    'Staff',
+    'Sword',
+    'Thrown',
+    'Whip',
+)
+
 def rank_relics(order_by='atk', equipment_type=WEAPON,
                 categories=WEAPON_CATEGORIES, realm=None, count=1):
     if isinstance(realm, int) and realm < 100001:

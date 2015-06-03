@@ -73,7 +73,7 @@
       <th data-field="state" data-checkbox="true"></th>
       <th data-width="25" data-formatter="inspect_formatter"></th>
       {% for c in columns %}
-      <th data-field="{{ c[0] }}" data-sortable="true">{{ c[1] }}</th>
+      <th data-field="{{ c[0] }}" data-sortable="true" data-formatter="super_formatter">{{ c[1] }}</th>
       {% endfor %}
     </tr>
   </thead>
