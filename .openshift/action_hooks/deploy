@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# This deploy hook gets executed after dependencies are resolved and the
+# build hook has been run but before the application has been started back
+# up again.  This script gets executed directly, so it could be python, php,
+# ruby, etc.
+
+
+mkdir -p ${OPENSHIFT_DATA_DIR}post
+
+for i in static/img static/lang static/ww; do
+    # Ensure the directories exist
+    mkdir -p ${OPENSHIFT_DATA_DIR}${i}
+    # Then link the directories
+    ln -sfT ${OPENSHIFT_DATA_DIR}${i} ${OPENSHIFT_REPO_DIR}wsgi/${i}
+done
+
+#ln -sf ${OPENSHIFT_DATA_DIR}static/favicon.ico ${OPENSHIFT_REPO_DIR}wsgi/static/favicon.ico
+
+
+# Use repository htaccess if exists
+if [  -f ${OPENSHIFT_REPO_DIR}.openshift/config/.htaccess ]; then
+  cp -f ${OPENSHIFT_REPO_DIR}.openshift/config/.htaccess ${OPENSHIFT_REPO_DIR}/.htaccess
+fi
+
+
+set -e
+
+if [ -z "$OPENSHIFT_MYSQL_DB_HOST" ]; then
+    echo 1>&2
+    echo "Could not find mysql database. Please run:" 1>&2
+    echo "rhc cartridge add -a $OPENSHIFT_APP_NAME -c mysql-5.1" 1>&2
+    echo "then make a sample commit (add whitespace somewhere) and re-push" 1>&2
+    echo 1>&2
+    exit 5
+fi
+
+
+# Confirm database exists, if not create it
+if ! mysql -u"${OPENSHIFT_MYSQL_DB_USERNAME}" -p"${OPENSHIFT_MYSQL_DB_PASSWORD}" -h"${OPENSHIFT_MYSQL_DB_HOST}" -P"${OPENSHIFT_MYSQL_DB_PORT}" -e "show tables;" "$OPENSHIFT_APP_NAME" > /dev/null 2>&1
+then
+    echo "Database schema not yet added." 1>&2
+else
+    echo "Database appears to be configured."
+fi
+
+
+### EOF ##
