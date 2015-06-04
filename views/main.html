@@ -17,8 +17,8 @@
     window.setTimeout(function() { $("#getInfo").hide(); }, 10000);
     {% for tab in o.extra_tabs %}
     $("#main-tabs a[href='#{{ tab['id'] }}']").on("shown.bs.tab", function (e) {
-      {% if tab.get('data-url') %}
-      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ tab['data-url'] }}"});
+      {% if tab.get('data_url') %}
+      $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ tab['data_url'] }}"});
       {% elif tab.get('search_id') %}
       $("#{{ tab['id'] }}-table").bootstrapTable("refresh", {url: "{{ url('json_id', id=tab['search_id']) }}?all=1{{ tab.get('extra_params', '') }}"});
       {% else %}

@@ -1,3 +1,32 @@
+function fraction_to_rgb(f) {
+    if (f === 100) {
+        f = 99
+    }
+    var r, g, b;
+
+    if (f < .5) {
+        // green to yellow
+        r = Math.floor(255 * (f / .5));
+        g = 255;
+    }
+    else {
+        // yellow to red
+        r = 255;
+        g = Math.floor(255 * ((.5 - f % .5) / .5));
+    }
+    b = 0;
+
+    return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function rlerp(l, h, m) {
+    return (m - l) / (h - l);
+}
+
+function lerp(l, h, m) {
+    return (1 - m)*l + m*h;
+}
+
 function inspect_formatter(value, row, index) {
     if ("search_id" in row) {
         return '<a href="/' + row["search_id"] + '"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span><span class="sr-only">Inspect</span></a>';

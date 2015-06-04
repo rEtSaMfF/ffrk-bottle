@@ -10,7 +10,8 @@ from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
 from bottle.ext import sqlalchemy
 
 from time import time
-from wsgi import models
+
+import models.models as models
 
 
 ### BOTTLE INIT START ###
@@ -18,8 +19,6 @@ app = application = Bottle()
 app.debug = False
 
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 2
-
-TEMPLATE_PATH.insert(0, os.path.join('wsgi', 'views'))
 
 
 @app.error(500)
@@ -55,7 +54,7 @@ def save_json(data, filepath='/tmp/ffrk.json', min=False):
 
 @app.get('/static/<filepath:path>', name='static')
 def statics(filepath):
-    root = os.path.join('wsgi', 'static')
+    root = 'static'
     for ext in ('js', 'css'):
         if filepath.endswith('.{}'.format(ext)):
             root = os.path.join(root, ext)
@@ -77,7 +76,7 @@ def statics(filepath):
 
 @app.get('/robots.txt')
 def robots():
-    root = os.path.join('wsgi', 'static')
+    root = 'static'
     return static_file('robots.txt', root=root)
 
 
@@ -218,7 +217,10 @@ def json_dungeons():
         outlist = []
         for dungeon in dungeons:
             row = dungeon.dict()
-            row['world_name'] = dungeon.world.name
+            row['world_name'] = '<a href="{}">{}</a>'.format(
+                app.get_url('main', iden=world_id),
+                dungeon.world.name
+            )
             row['type'] = models.DUNGEON_TYPE[dungeon.dungeon_type]
             shards = 0
             prizes = []
@@ -325,7 +327,8 @@ def get_json():
             (('log', 'logs'),
              models.Log, models.Log.timestamp.desc(), 'id', True, 100, None),
             (('character', 'characters'),
-             models.Character, models.Character.name, 'buddy_id', True, None, None),
+             models.Character, models.Character.name,
+             'buddy_id', True, None, models.Character.level),
         ):
             if category in c:
                 q = session.query(m).order_by(o).group_by(g).limit(l)
@@ -340,7 +343,7 @@ def get_json():
             # Some tables do not have a rarity column
             q = q.filter_by(rarity=rarity)
         filter = request.GET.get('filter')
-        if filter is not None:
+        if filter is not None and f is not None:
             q = q.filter(f == filter)
         q = q.all()
         if q:

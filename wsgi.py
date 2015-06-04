@@ -39,7 +39,7 @@ logging.basicConfig(filename=logfile, level=logging.DEBUG,
 logging.info('Logging started')
 
 
-from wsgi.ffrkapp import application
+from ffrkapp import application
 
 
 ### EOF ###

@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+from __future__ import absolute_import
+
 import decimal
 import os
 import sys
@@ -22,12 +24,12 @@ from sqlalchemy.ext.declarative import declarative_base as real_declarative_base
 from sqlalchemy.orm import sessionmaker, load_only, relationship, backref,\
     joinedload, subqueryload, lazyload
 
-
+from . import BetterBase, session_scope, create_session, default_encode
 # TODO 2015-05-19
 # Improve injection attack protection
 # Basically escape every String column
 
-
+"""
 ### SQLALCHEMY INIT START ###
 declarative_base = lambda cls: real_declarative_base(cls=cls)
 
@@ -193,7 +195,7 @@ def make_tables():
     BetterBase.metadata.create_all(engine)
 create_tables = make_tables
 ### SQLALCHEMY INIT END ###
-
+"""
 
 # 2015-04-28 not used now
 '''
@@ -566,14 +568,28 @@ class World(BetterBase):
                 'id': 'dungeons',
                 'title': 'Dungeons',
                 # This should use a Bottle().get_url()
-                'data-url': '/json?category=dungeon&filter={}'.format(
+                #'data_url': '/json?category=dungeon&filter={}'.format(
+                #    self.search_id),
+                'data_url': '/dungeons.json?world_id={}'.format(
                     self.search_id),
                 #'search_id': self.search_id,
                 'columns': (
                     ('challenge_level', 'Difficulty'),
+                    #('world_name', 'Realm'),
                     ('name', 'Name'),
-                    ('dungeon_type', 'Dungeon Type'),
+                    ('type', 'Type'),
+                    ('conditions',
+                     'Conditions <span data-container="body" data-toggle="tooltip" title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
+                    ('stamina', 'Stamina'),
+                    ('shards',
+                     'Shards <span data-container="body" data-toggle="tooltip" title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
+                    ('prizes', 'Rewards'),
                 ),
+                #'columns': (
+                #       ('challenge_level', 'Difficulty'),
+                #       ('name', 'Name'),
+                #       ('dungeon_type', 'Dungeon Type'),
+                #   ),
             },
         )
 
