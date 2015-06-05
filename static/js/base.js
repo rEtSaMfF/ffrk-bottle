@@ -50,17 +50,14 @@ function super_formatter(value, row, index) {
 
     var key = get_key(row, value);
 
-    // This fails for "Core" characters
+    // This fails for "Core" characters because "name" == "job_name"
     if (key == "name" && "search_id" in row)
         return '<a href="/' + row["search_id"] + '">' + value + '</a>';
 
     if (key == "image_path") {
-        var ret = '';
+        ret = '<img src="' + value + '" alt="' + row["name"] + '" title="' + row["name"] + '" class="img-responsive center-block">';
         if ("search_id" in row)
-            ret += '<a href="/' + row["search_id"] + '">';
-        ret += '<img src="' + value + '" alt="' + row["name"] + '" title="' + row["name"] + '" class="img-responsive center-block">';
-        if ("search_id" in row)
-            ret += '</a>';
+            ret = '<a href="/' + row["search_id"] + '">' + ret + '</a>';
         return ret;
     }
 
