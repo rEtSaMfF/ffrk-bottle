@@ -1,8 +1,5 @@
-#!/usr/bin/env python2
-
 from __future__ import absolute_import
 
-import decimal
 import os
 import sys
 import json
@@ -15,7 +12,7 @@ import arrow
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
-    ForeignKey, Table, desc, event
+    ForeignKey, Table, desc
 from sqlalchemy.engine import Engine
 from sqlalchemy.types import TIMESTAMP
 from sqlalchemy_utils import ArrowType
@@ -24,197 +21,14 @@ from sqlalchemy.ext.declarative import declarative_base as real_declarative_base
 from sqlalchemy.orm import sessionmaker, load_only, relationship, backref,\
     joinedload, subqueryload, lazyload
 
-from . import BetterBase, session_scope, create_session, default_encode
+from .base import BetterBase, session_scope, create_session, default_encode
+from .character import Character, CharacterEquip, CharacterAbility
+from .log import Log
+
 # TODO 2015-05-19
 # Improve injection attack protection
 # Basically escape every String column
 
-"""
-### SQLALCHEMY INIT START ###
-declarative_base = lambda cls: real_declarative_base(cls=cls)
-
-@declarative_base
-class BetterBase(object):
-    '''
-    Add some default properties and methods to the SQLAlchemy declarative base.
-    '''
-    @property
-    def columns(self):
-        '''
-        Return all of the columns.
-        '''
-        return (c.name for c in self.__table__.columns)
-        #return (c.key for c in class_mapper(self.__class__).columns)
-
-    @property
-    def frontend_columns(self):
-        '''
-        The columns we see when listing all objects of this class.
-        An iterable of tuples (attribute_name, display_name).
-        '''
-        return ((c, c) for c in self.columns)
-
-    @property
-    def main_columns(self):
-        '''
-        The columns we see when listing similar objects of this class.
-        An iterable of tuples (attribute_name, display_name).
-        Example: listing the stats per level.
-        '''
-        return self.frontend_columns
-
-    @property
-    def search_id(self):
-        '''
-        The id used to search for this object using get_by_id().
-        This ignores varying attributes such as stats per level.
-        '''
-        # My *_tables do not have an id attribute so this is an AttributeError.
-        return self.id
-
-    _main_panels = None
-    # Will be an iterable of dicts representing this object on its main page.
-
-    def generate_main_panels(self):
-        self._main_panels = []
-
-    @property
-    def main_panels(self):
-        if self._main_panels is None:
-            self.generate_main_panels()
-
-        return self._main_panels
-
-    extra_tabs = []
-    # Will be an iterable of dicts representing differnet pages used to display
-    # objects similar to this object but differing slightly
-    # (such as stats per level).
-
-    def __repr__(self):
-        return u'{}({})'.format(self.__class__.__name__, self.columns)
-
-    def dict(self):
-        '''
-        Transform the model into a dictionary.
-        '''
-        ret = dict((c, getattr(self, c)) for c in self.columns)
-        if self.search_id is not None:
-            ret['search_id'] = self.search_id
-        return ret
-
-    def jsonify(self):
-        '''
-        Transform the model into JSON.
-        '''
-        return json.dumps(self.dict(),
-                          default=default_encode, separators=(',',':'))
-
-
-def default_encode(obj):
-    if isinstance(obj, decimal.Decimal):
-        return u'{:.2f}'.format(self._value)
-    if isinstance(obj, arrow.arrow.Arrow):
-        return obj.for_json()
-    if isinstance(obj, arrow.arrow.datetime):
-        return arrow.get(obj).for_json()
-        #return arrow.get(obj).timestamp
-        #if obj.utcoffset() is not None:
-        #    obj = obj - obj.utcoffset()
-
-        #obj = obj.replace(tzinfo=None)
-        #return (obj - arrow.arrow.datetime(1970, 1, 1)).total_seconds()
-    raise TypeError('{} is not JSON serializable'.format(obj))
-
-
-engine = create_engine(
-    'mysql+pymysql://{}:{}@{}:{}/{}'.format(
-        os.environ['OPENSHIFT_MYSQL_DB_USERNAME'],
-        os.environ['OPENSHIFT_MYSQL_DB_PASSWORD'],
-        os.environ['OPENSHIFT_MYSQL_DB_HOST'],
-        os.environ['OPENSHIFT_MYSQL_DB_PORT'],
-        'ffrk',
-    ), pool_recycle=3600)
-create_session = sessionmaker(bind=engine)
-
-
-# I do not use this plugin
-'''
-plugin = sqlalchemy.Plugin(
-    engine,
-    #Base.metadata,
-    BetterBase.metadata,
-    keyword='db',
-    create=True,
-    commit=True,
-    use_kwargs=False
-)
-'''
-
-
-@contextmanager
-def session_scope():
-    '''
-    Provide a transactional scope around a series of operations.
-    '''
-    session = create_session()
-    try:
-        yield session
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logging.error(e, e.args)
-        logging.error(traceback.print_exc())
-        logging.error('exc_info=True', exc_info=True)
-    finally:
-        session.close()
-
-
-# TODO 2015-05-08
-# aaargh this
-if False:
-#if True:
-    logging.basicConfig()
-    logger = logging.getLogger('ffrk.sqltime')
-    logger.setLevel(logging.DEBUG)
-
-    @event.listens_for(Engine, 'before_cursor_execute')
-    def before_cursor_execute(conn, cursor, statement,
-                              parameters, context, executemany):
-        conn.info.setdefault('query_start_time', []).append(time.time())
-        logger.debug('Start Query: {}'.format(statement))
-
-    @event.listens_for(Engine, 'after_cursor_execute')
-    def after_cursor_execute(conn, cursor, statement,
-                             parameters, context, executemany):
-        total = time.time() - conn.info['query_start_time'].pop(-1)
-        logger.debug('Query Complete!')
-        logger.debug('Total Time: {:f}'.format(total))
-
-
-def make_tables():
-    BetterBase.metadata.create_all(engine)
-create_tables = make_tables
-### SQLALCHEMY INIT END ###
-"""
-
-# 2015-04-28 not used now
-'''
-def to_roman(n):
-    digits = [
-        (1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD' ),
-        (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'),
-        (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')
-    ]
-    result = ''
-    while digits:
-        val, romn = digits[0]
-        if n < val:
-            digits.pop(0)
-        else:
-            n -= val
-            result += romn
-    return result
-'''
 
 STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
 
@@ -303,233 +117,6 @@ class About(object):
             'footer': '*Work in progress<iframe src="https://ghbtns.com/github-btn.html?user=retsamff&amp;repo=ffrk-bottle&amp;type=fork&amp;count=true" scrolling="0" class="pull-right" frameborder="0" height="20px" width="100px"></iframe>',
         },
     )
-
-
-class CharacterEquip(BetterBase):
-    __tablename__ = 'character_equip'
-    category_id = Column(TINYINT, primary_key=True, autoincrement=False)
-    equipment_type = Column(TINYINT, primary_key=True, autoincrement=False)
-    buddy_id = Column(Integer, primary_key=True, autoincrement=False)
-
-    def __init__(self, **kwargs):
-        known_factor = '100'
-        if kwargs['factor'] != known_factor:
-            logging.critical(
-                '{} has a non {} factor'.format(
-                    type(self).__name__, known_factor))
-        for i in (
-            'factor',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(CharacterEquip, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{}'.format(
-            EQUIP_ID_NAME.get(
-                self.category_id,
-                'Unknown EquipmentCategory[{}]'.format(self.category_id)
-            )
-        )
-
-class CharacterAbility(BetterBase):
-    __tablename__ = 'character_ability'
-    category_id = Column(TINYINT, primary_key=True, autoincrement=False)
-    rarity = Column(TINYINT, nullable=False)
-    buddy_id = Column(Integer, primary_key=True, autoincrement=False)
-
-    def __init__(self, **kwargs):
-        for i in (
-            'name',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(CharacterAbility, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '[{}*] {}'.format(
-            self.rarity,
-            ABILITY_ID_NAME.get(
-                self.category_id,
-                'Unknown AbilityCategory[{}]'.format(self.category_id)
-            )
-        )
-
-class Character(BetterBase):
-    __tablename__ = 'character'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    buddy_id = Column(Integer, nullable=False)
-    name = Column(String(length=32), nullable=False)
-    job_name = Column(String(length=32), nullable=False)
-    description = Column(String(length=256), nullable=False)
-    series_id = Column(Integer, nullable=False)
-    image_path = Column(String(length=64), nullable=False)
-
-    level = Column(TINYINT, nullable=False)
-    #level_max = Column(TINYINT, nullable=False)
-
-    hp = Column(SMALLINT, nullable=False)
-    atk = Column(SMALLINT, nullable=False)
-    defense = Column(SMALLINT, nullable=False)
-    acc = Column(SMALLINT, nullable=False)
-    eva = Column(SMALLINT, nullable=False)
-    matk = Column(SMALLINT, nullable=False)
-    mdef = Column(SMALLINT, nullable=False)
-    mnd = Column(SMALLINT, nullable=False)
-    spd = Column(SMALLINT, nullable=False)
-
-    series_hp = Column(SMALLINT, nullable=False)
-    series_atk = Column(SMALLINT, nullable=False)
-    series_def = Column(SMALLINT, nullable=False)
-    series_acc = Column(SMALLINT, nullable=False)
-    series_eva = Column(SMALLINT, nullable=False)
-    series_matk = Column(SMALLINT, nullable=False)
-    series_mdef = Column(SMALLINT, nullable=False)
-    series_mnd = Column(SMALLINT, nullable=False)
-    series_spd = Column(SMALLINT, nullable=False)
-
-    frontend_columns = (
-        ('image_path', 'Image'),
-        ('name', 'Name'),
-        ('series_id', 'Series'),
-    )
-
-    main_columns = (
-        ('level', 'Level'),
-        ('hp', 'HP'),
-        ('atk', 'ATK'),
-        ('defense', 'DEF'),
-        ('acc', 'ACC'),
-        ('eva', 'EVA'),
-        ('matk', 'MAG'),
-        ('mdef', 'RES'),
-        ('mnd', 'MIND'),
-        ('spd', 'SPD'),
-        ('series_acc', 'RS ACC'),
-        ('series_atk', 'RS ATK'),
-        ('series_def', 'RS DEF'),
-        ('series_eva', 'RS EVA'),
-        ('series_matk', 'RS MAG'),
-        ('series_mdef', 'RS RES'),
-        ('series_mnd', 'RS MIND'),
-    )
-
-    @property
-    def search_id(self):
-        return self.buddy_id
-
-    @property
-    def extra_tabs(self):
-        return (
-            {
-                'id': 'stats',
-                'title': 'Stats by Level',
-                'search_id': self.search_id,
-                'columns': self.main_columns,
-            },
-        )
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in (
-            ('job_name', 'Class'),
-            ('series_id', 'Series'),
-        ):
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
-        self._main_panels = (
-            {
-                'title': self.name,
-                'body': '<a href="{0}"><img src="{0}" alt="{1}" title="{1}" class="img-responsive center-block"></a>'.format(
-                    self.image_path, self.name),
-                'items': main_stats,
-            },
-            {
-                'title': 'Equipment',
-                'items': self.get_equips(),
-            },
-            {
-                'title': 'Abilities',
-                'items': self.get_abilities(),
-            },
-        )
-
-    def get_abilities(self):
-        abilities = ()
-        with session_scope() as session:
-            abilities = session.query(CharacterAbility).filter(
-                CharacterAbility.buddy_id == self.buddy_id).all()
-            session.expunge_all()
-        return abilities
-
-    def get_equips(self):
-        equips = ()
-        with session_scope() as session:
-            equips = session.query(CharacterEquip).filter(
-                CharacterEquip.buddy_id == self.buddy_id).all()
-            session.expunge_all()
-        return equips
-
-    def __init__(self, **kwargs):
-        self.defense = kwargs['def']
-        self.description = kwargs['description'].encode(
-            sys.stdout.encoding, errors='ignore')
-        if kwargs['job_name'] == 'Keeper':
-            self.name = 'Tyro'
-        else:
-            self.name = kwargs['name']
-        self.image_path = kwargs['image_path'].replace('/dff', '')
-
-        for i in (
-            'def',
-            'description',
-            'name',
-
-            'id',
-            'ability_1_id',
-            'ability_2_id',
-            'accessory_id',
-            'weapon_id',
-            'armor_id',
-            'created_at',
-            'exp',
-            'row',
-            'soul_strike_id',
-            'image_path',
-
-            'default_soul_strike_id',
-            'ability_category',
-            'equipment_category',
-            'level_max',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Character, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{} ({})'.format(self.name, self.level)
-
-
-class Log(BetterBase):
-    __tablename__ = 'log'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(TIMESTAMP,
-                       default=arrow.arrow.datetime.utcnow, nullable=False)
-    log = Column(String(length=256), nullable=False)
-    # I want a way to reference the objects in this log but that is not too easy
-
-    frontend_columns = (
-        ('timestamp', 'Timestamp'),
-        ('log', 'Log'),
-    )
-
-    search_id = None
-
-    def __init__(self, **kwargs):
-        super(Log, self).__init__(**kwargs)
-        logging.info(self.log)
-
-    def __repr__(self):
-        return '{} {}'.format(self.timestamp, self.log)
 
 
 WORLD_TYPE = {
@@ -687,7 +274,7 @@ def get_active_events(now=None):
             now = arrow.now()
 
         events = q.filter(World.opened_at <= now)\
-                  .filter(World.closed_at > now).all()
+                  .filter(World.kept_out_at > now).all()
         session.expunge_all()
     return events
 
@@ -1506,9 +1093,9 @@ class Ability(BetterBase):
     category_name = Column(String(length=32), nullable=False)
                   # ('Spellblade', 'Celerity', 'Combat', etc.)
     category_type = Column(TINYINT, nullable=False)
-                  # {1:Black, 2:White, 3:Physical, 4:Summon, 5:Other}
+                  # {1:Physical, 2:White, 3:Black, 4:Summon, 5:Other}
     target_range = Column(TINYINT, nullable=False)
-                  # {1:Single, 2:AOE?}
+                  # {1:Single, 2:AOE, 3:Self}
 
     grade = Column(TINYINT, nullable=False)
     next_grade = Column(TINYINT, nullable=False)
@@ -2376,7 +1963,9 @@ def import_dff(data=None, filepath=''):
                 # Remove the stats from both the Character() base and series
                 for k in keys:
                     c[k] -= equipment[k]
-                    # Check if we are in the series
+                    # We only need to compare if the equipment series
+                    # matches the character series.
+                    # The game client calculates both based on dungeon series.
                     if equipment['series_id'] == c['series_id']:
                         c['series_{}'.format(k)]\
                             -= equipment['series_{}'.format(k)]

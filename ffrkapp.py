@@ -8,6 +8,7 @@ import logging
 from bottle import Bottle, redirect, request, response, TEMPLATE_PATH, error,\
     abort, static_file, BaseRequest, jinja2_view as view, Jinja2Template
 from bottle.ext import sqlalchemy
+from sqlalchemy import tuple_, func
 
 from time import time
 
@@ -202,10 +203,6 @@ def json_dungeons():
     '''
     Get JSON for dungeon listings.
     '''
-    # TODO 2015-05-18
-    # Filter dungeons by release.
-    # TODO 2015-05-18
-    # Add menu item to filter dungeons by release.
     response.content_type = 'application/json; charset=UTF8'
 
     content = request.GET.get('content')
@@ -213,52 +210,53 @@ def json_dungeons():
     world_id = request.GET.get('world') or request.GET.get('world_id')
     dungeons = models.get_dungeons(content, event, world_id)
 
-    if dungeons:
-        outlist = []
-        for dungeon in dungeons:
-            row = dungeon.dict()
-            row['world_name'] = '<a href="{}">{}</a>'.format(
-                app.get_url('main', iden=world_id),
-                dungeon.world.name
-            )
-            row['type'] = models.DUNGEON_TYPE[dungeon.dungeon_type]
-            shards = 0
-            prizes = []
-            for prize in dungeon.prizes:
-                if prize.name == 'Stamina Shard':
-                    shards += prize.count
-                    continue
-                if prize.drop_type != 'COMMON':
-                    prizes.append('<a href="{}">{}</a>'.format(
-                        app.get_url('main', iden=prize.search_id), prize))
-                else:
-                    prizes.append(str(prize))
-            row['shards'] = shards
-            row['prizes'] = '<br>'.join(prizes)
-            row['stamina'] = 0
-            # This is repeated three times
-            conditions = []
-            conditions_present = False
-            all_conditions_present = True
-            for battle in dungeon.battles:
-                row['stamina'] += battle.stamina
-                if not battle.conditions:
-                    all_conditions_present = False
-                for c in battle.conditions:
-                    conditions_present = True
-                    # Filter out the standard conditions
-                    if c.condition_id not in (1001, 1002, 1004):
-                        conditions.append(str(c))
-            if not conditions_present:
-                conditions.append(
-                    'We have not imported any conditions for this dungeon.')
-            elif not all_conditions_present:
-                conditions.append(
-                    'We are missing some conditions for this dungeon.')
-            if row['stamina'] == 0:
-                row['stamina'] = 'Unknown'
-            row['conditions'] = '<br>'.join(conditions)
-            outlist.append(row)
+    outlist = []
+    for dungeon in dungeons:
+        row = dungeon.dict()
+        row['world_name'] = '<a href="{}">{}</a>'.format(
+            app.get_url('main', iden=dungeon.world_id),
+            dungeon.world.name
+        )
+        row['type'] = models.DUNGEON_TYPE[dungeon.dungeon_type]
+        shards = 0
+        prizes = []
+        for prize in dungeon.prizes:
+            if prize.name == 'Stamina Shard':
+                shards += prize.count
+                continue
+            if prize.drop_type != 'COMMON':
+                prizes.append('<a href="{}">{}</a>'.format(
+                    app.get_url('main', iden=prize.search_id), prize))
+            else:
+                prizes.append(str(prize))
+        row['shards'] = shards
+        row['prizes'] = '<br>'.join(prizes)
+        row['stamina'] = 0
+        # This is repeated three times
+        conditions = []
+        conditions_present = False
+        all_conditions_present = True
+        for battle in dungeon.battles:
+            row['stamina'] += battle.stamina
+            if not battle.conditions:
+                all_conditions_present = False
+            for c in battle.conditions:
+                conditions_present = True
+                # Filter out the standard conditions
+                if c.condition_id not in (1001, 1002, 1004):
+                    conditions.append(str(c))
+        if not conditions_present:
+            conditions.append(
+                'We have not imported any conditions for this dungeon.')
+        elif not all_conditions_present:
+            conditions.append(
+                'We are missing some conditions for this dungeon.')
+        if row['stamina'] == 0:
+            row['stamina'] = 'Unknown'
+        row['conditions'] = '<br>'.join(conditions)
+        outlist.append(row)
+
+    if outlist:
         return minify_json(outlist)
 
     response.status = 404
@@ -306,29 +304,38 @@ def get_json():
         # category, model, order_by, group_by, rarity, limit, filter
         for c, m, o, g, r, l, f in (
             (('material', 'materials'),
-             models.Material, 'name', 'id', False, None, None),
+             models.Material, models.Material.id, models.Material.id,
+             False, None, None),
             (('ability', 'abilities'),
-             models.Ability, 'name', 'name', False, None, None),
-            (('enemy', 'enemies'), models.Enemy, models.Enemy.name.desc(),
+             models.Ability, models.Ability.name, models.Ability.name,
+             False, None, None),
+            (('enemy', 'enemies'),
+             models.Enemy, models.Enemy.name, models.Enemy.enemy_id,
+             True, None, None),
              #'name', True, None, None),
-             'enemy_id', True, None, None),
+             #'enemy_id', True, None, None),
              #'param_id', True, None, None),
              # TODO 2015-05-18
              # Filter out blank names (or group such that the non-blanks win)
             (('relic', 'relics'),
-             models.Relic, 'name', 'name', False, None, None),
-            (('world', 'worlds'), models.World, 'id', 'id', True, None, None),
+             models.Relic, models.Relic.name, models.Relic.name,
+             False, None, None),
+            (('world', 'worlds'),
+             models.World, models.World.id, models.World.id,
+             True, None, None),
             (('dungeon', 'dungeons'),
-             models.Dungeon, 'id', 'id', True, None, models.Dungeon.world_id),
+             models.Dungeon, models.Dungeon.id, models.Dungeon.id,
+             True, None, models.Dungeon.world_id),
             # TODO 2015-05-07
             # Enhance server-side pagination for Log
             # request.GET.get('offset', 0)
             # request.GET.get('limit', 25)
             (('log', 'logs'),
-             models.Log, models.Log.timestamp.desc(), 'id', True, 100, None),
+             models.Log, models.Log.timestamp.desc(), models.Log.id,
+             True, 100, None),
             (('character', 'characters'),
-             models.Character, models.Character.name,
-             'buddy_id', True, None, models.Character.level),
+             models.Character, models.Character.name, models.Character.buddy_id,
+             True, None, models.Character.level),
         ):
             if category in c:
                 q = session.query(m).order_by(o).group_by(g).limit(l)
@@ -344,7 +351,24 @@ def get_json():
             q = q.filter_by(rarity=rarity)
         filter = request.GET.get('filter')
         if filter is not None and f is not None:
-            q = q.filter(f == filter)
+            # Filter Character by level
+            if 'character' in c:
+                q = q.filter(f <= filter)
+            else:
+                q = q.filter(f == filter)
+        elif 'character' in c:
+            # If we are not filtering Character by level
+            # Then we want to return one row per buddy_id corresponding
+            # to the highest level
+            t = tuple_(models.Character.buddy_id, models.Character.level)
+            sq = session.query(models.Character.buddy_id,
+                               func.max(models.Character.level))\
+                        .group_by(models.Character.buddy_id)
+            q = q.filter(t.in_(sq))
+        elif 'enemy' in c:
+            # We want to ensure that the "main" param_id is returned
+            q = q.filter(models.Enemy.name != '')
+            pass
         q = q.all()
         if q:
             return minify_json([i.dict() for i in q])
