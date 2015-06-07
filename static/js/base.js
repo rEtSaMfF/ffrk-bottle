@@ -51,7 +51,7 @@ function super_formatter(value, row, index) {
     var key = get_key(row, value);
 
     // This fails for "Core" characters because "name" == "job_name"
-    if (key == "name" && "search_id" in row)
+    if ((key == "name" || key == "title") && "search_id" in row)
         return '<a href="/' + row["search_id"] + '">' + value + '</a>';
 
     if (key == "image_path") {
@@ -61,7 +61,8 @@ function super_formatter(value, row, index) {
         return ret;
     }
 
-    if (["timestamp", "opened_at", "closed_at"].indexOf(key) != -1)
+    if (["timestamp", "opened_at", "closed_at", "kept_out_at"].indexOf(key)
+        != -1)
         return '<abbr title="' + moment.tz(value, "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
 
     if (key == "max_hp") {
