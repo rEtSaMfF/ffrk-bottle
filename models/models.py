@@ -490,6 +490,11 @@ class Dungeon(BetterBase):
             'epilogue_image_path',
             'prizes',
             'type',
+
+            # Added 2015-06-07
+            'captures',
+            'button_style',
+            'total_stamina',
         ):
             if i in kwargs:
                 del(kwargs[i])
