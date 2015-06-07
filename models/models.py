@@ -647,6 +647,9 @@ class Condition(BetterBase):
         for i in (
             'id',
             'medal_num',
+
+            # Added 2015-06-07
+            'battle_specific_score_id',
         ):
             if i in kwargs:
                 del(kwargs[i])

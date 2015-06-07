@@ -279,6 +279,9 @@ class Character(BetterBase):
             'ability_category',
             'equipment_category',
             'level_max',
+
+            # Added 2015-06-07
+            'record_materia_1_id',
         ):
             if i in kwargs:
                 del(kwargs[i])
