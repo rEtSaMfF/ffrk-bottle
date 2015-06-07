@@ -53,6 +53,11 @@ def save_json(data, filepath='/tmp/ffrk.json', min=False):
         json.dump(data, outfile, sort_keys=True, ensure_ascii=True, **kwargs)
 
 
+@app.get('/dff/static/<filepath:path>', name='dff')
+def dff(filepath):
+    redirect(app.get_url('static', filepath=filepath), 301)
+
+
 @app.get('/static/<filepath:path>', name='static')
 def statics(filepath):
     root = 'static'
@@ -138,6 +143,7 @@ def home(category=None):
         (('world', 'worlds', 'realm', 'realms'), models.World.frontend_columns),
         (('log', 'logs'), models.Log.frontend_columns),
         (('character', 'characters'), models.Character.frontend_columns),
+        (('quest', 'quests'), models.Quest.frontend_columns),
     ):
         if category in c:
             columns = cs
@@ -336,6 +342,9 @@ def get_json():
             (('character', 'characters'),
              models.Character, models.Character.name, models.Character.buddy_id,
              True, None, models.Character.level),
+            (('quest', 'quests'),
+             models.Quest, models.Quest.id, models.Quest.id,
+             True, None, None),
         ):
             if category in c:
                 q = session.query(m).order_by(o).group_by(g).limit(l)
