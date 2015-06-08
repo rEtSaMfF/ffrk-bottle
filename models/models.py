@@ -40,9 +40,6 @@ from .world import World, get_active_events
 # Basically escape every String column
 
 
-STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
-
-
 ### START CLASS DEFINITIONS ###
 
 
@@ -656,9 +653,9 @@ def get_by_id(id, all=False, enemy=False):
             (Ability, Ability.ability_id, ('name', )),
             (Relic, Relic.equipment_id, ('level', 'rarity')),
             (Battle, Battle.id, ('id', )),
-            (Enemy, Enemy.param_id, ('lv', )),
             (Character, Character.buddy_id, ('level', )),
             (Quest, Quest.id, ('id', )),
+            (Enemy, Enemy.param_id, ('lv', )),
         ):
             q = session.query(m)
             q = q.filter(c == id)

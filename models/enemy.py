@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, subqueryload
 
 from .base import BetterBase, session_scope
 

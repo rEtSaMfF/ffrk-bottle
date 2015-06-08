@@ -1,6 +1,5 @@
 import decimal
 import os
-import sys
 import json
 import logging
 import time
@@ -181,6 +180,11 @@ def make_tables():
     BetterBase.metadata.create_all(engine)
 create_tables = make_tables
 ### SQLALCHEMY INIT END ###
+
+
+### MODULE GLOBALS START ###
+STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
+### MODULE GLOBALS END ###
 
 
 ### EOF ###

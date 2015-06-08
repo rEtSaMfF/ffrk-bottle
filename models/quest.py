@@ -26,7 +26,7 @@ class Quest(BetterBase):
     achieve_type_name = Column(String(length=16), nullable=False)
 
     hint_title = Column(String(length=128), nullable=False)
-    hint_msg = Column(String(length=256), nullable=False)
+    hint_msg = Column(String(length=512), nullable=False)
 
     frontend_columns = (
         ('title', 'Title'),

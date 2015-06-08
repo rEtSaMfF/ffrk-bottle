@@ -7,7 +7,7 @@ from sqlalchemy_utils import ArrowType
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 from sqlalchemy.orm import relationship
 
-from .base import BetterBase, session_scope
+from .base import BetterBase, session_scope, STRFTIME
 
 
 WORLD_TYPE = {

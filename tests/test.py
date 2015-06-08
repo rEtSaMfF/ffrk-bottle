@@ -84,6 +84,43 @@ class TestFFRKApp():
                             status=404)
         assert 'File does not exist.' in resp.text
 
+    def test_main(self):
+        # Ability
+        bladeblitz = self.app.get(self.url('main', iden=30151051))
+        assert bladeblitz
+
+        # Character
+        cloud = self.app.get(self.url('main', iden=10700100))
+        assert cloud
+
+        # World
+        daily = self.app.get(self.url('main', iden=800001))
+        assert daily
+
+        # Dungeon
+        reactor1_dungeon = self.app.get(self.url('main', iden=207001))
+        assert reactor1_dungeon
+
+        # Battle
+        reactor5_battle = self.app.get(self.url('main', iden=507006))
+        assert reactor5_battle
+
+        # Enemy
+        archaeosaur = self.app.get(self.url('main', iden=4080151))
+        assert archaeosaur
+
+        # Material
+        lpo = self.app.get(self.url('main', iden=40000002))
+        assert lpo
+
+        # Quest
+        accessorize = self.app.get(self.url('main', iden=10300001))
+        assert accessorize
+
+        # Relic
+        masamune = self.app.get(self.url('main', iden=21003005))
+        assert masamune
+
     def test_post(self):
         pass
 
