@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 
-from .base import BetterBase
+from .base import BetterBase, session_scope
 
 
 CATEGORY_ID = {
