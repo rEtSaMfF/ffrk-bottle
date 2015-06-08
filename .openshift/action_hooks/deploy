@@ -15,6 +15,9 @@ for i in static/img static/lang static/ww; do
     ln -sfT ${OPENSHIFT_DATA_DIR}${i} ${OPENSHIFT_REPO_DIR}${i}
 done
 
+mkdir -p ${OPENSHIFT_REPO_DIR}wsgi
+ln -sft ${OPENSHIFT_REPO_DIR}wsgi ${OPENSHIFT_REPO_DIR}static
+
 #ln -sf ${OPENSHIFT_DATA_DIR}static/favicon.ico ${OPENSHIFT_REPO_DIR}static/favicon.ico
 
 
