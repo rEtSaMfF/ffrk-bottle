@@ -6,6 +6,8 @@ import ffrkapp
 import models.models as models
 
 from models.base import engine
+from models.battle import enemy_table
+from models.condition import condition_table
 
 
 class TestModels():
@@ -21,19 +23,19 @@ class TestModels():
         assert self.inspector.get_table_names()
 
     def test_query(self):
+        assert self.session.query(models.AbilityCost).first()
+        assert self.session.query(models.Ability).first()
         assert self.session.query(models.Log).first()
         assert self.session.query(models.World).first()
         assert self.session.query(models.Prize).first()
         assert self.session.query(models.Dungeon).first()
         assert self.session.query(models.Condition).first()
-        assert self.session.query(models.condition_table).first()
-        assert self.session.query(models.enemy_table).first()
+        assert self.session.query(condition_table).first()
+        assert self.session.query(enemy_table).first()
         assert self.session.query(models.Battle).first()
         assert self.session.query(models.AttributeAssociation).first()
         assert self.session.query(models.Attribute).first()
         assert self.session.query(models.Enemy).first()
-        assert self.session.query(models.AbilityCost).first()
-        assert self.session.query(models.Ability).first()
         #assert self.session.query(models.EnemyAbility).first()
         assert self.session.query(models.Drop).first()
         assert self.session.query(models.DropAssociation).first()
@@ -42,7 +44,7 @@ class TestModels():
         assert self.session.query(models.Character).first()
         assert self.session.query(models.CharacterEquip).first()
         assert self.session.query(models.CharacterAbility).first()
-        #assert self.session.query(models.Quest).first()
+        assert self.session.query(models.Quest).first()
 
 
 class TestFFRKApp():
@@ -57,6 +59,10 @@ class TestFFRKApp():
         resp = self.app.get(self.url('json_dungeons'))
         assert resp.status == '200 OK'
         assert resp.content_type == 'application/json'
+
+        resp2 = self.app.get('{}?event=1'.format(self.url('json_dungeons')))
+        assert resp2.status == '200 OK'
+        assert resp2.content_type == 'application/json'
 
     def test_about_redirect(self):
         resp = self.app.get(self.url('home'))

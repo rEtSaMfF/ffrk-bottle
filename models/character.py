@@ -282,6 +282,7 @@ class Character(BetterBase):
 
             # Added 2015-06-07
             'record_materia_1_id',
+            'record_materia_step',
         ):
             if i in kwargs:
                 del(kwargs[i])

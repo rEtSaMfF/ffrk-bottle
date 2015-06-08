@@ -13,17 +13,27 @@ from contextlib import contextmanager
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean,\
     ForeignKey, Table, desc
-from sqlalchemy.engine import Engine
-from sqlalchemy.types import TIMESTAMP
 from sqlalchemy_utils import ArrowType
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
-from sqlalchemy.ext.declarative import declarative_base as real_declarative_base
 from sqlalchemy.orm import sessionmaker, load_only, relationship, backref,\
     joinedload, subqueryload, lazyload
 
-from .base import BetterBase, session_scope, create_session, default_encode
+from .base import BetterBase, session_scope, create_session, default_encode,\
+    make_tables
+from .ability import Ability, AbilityCost
+from .battle import Battle
 from .character import Character, CharacterEquip, CharacterAbility
+from .condition import Condition
+from .drop import Drop, DropAssociation
+from .dungeon import Dungeon, DUNGEON_TYPE, get_content_dates, get_dungeons
+from .enemy import Enemy, Attribute, AttributeAssociation
 from .log import Log
+from .material import Material
+from .prize import Prize
+from .quest import Quest, import_quests
+from .relic import Relic
+from .world import World, get_active_events
+
 
 # TODO 2015-05-19
 # Improve injection attack protection
@@ -32,77 +42,8 @@ from .log import Log
 
 STRFTIME = '%Y-%m-%dT%H:%M:%S%z (%Z)'
 
-CATEGORY_ID = {
-    'Dagger': 1,
-    'Sword': 2,
-    'Katana': 3,
-    'Axe': 4,
-    'Hammer': 5,
-    'Spear': 6,
-    'Fist': 7,
-    'Rod': 8,
-    'Staff': 9,
-    'Bow': 10,
-    'Instrument': 11,
-    'Whip': 12,
-    'Thrown': 13,
-    'Book': 14,
 
-    'Ball': 30,
-
-    'Shield': 50,
-    'Hat': 51,
-    'Helm': 52,
-    'Light Armor': 53,
-    'Armor': 54,
-    'Robe': 55,
-    'Bracer': 56,
-
-    'Accessory': 80,
-
-    'Weapon Upgrade': 98,
-    'Armor Upgrade': 99,
-
-    'Black Magic': 1,
-    'White Magic': 2,
-    'Summoning': 3,
-    'Spellblade': 4,
-    'Combat': 5,
-    'Support': 6,
-    'Celerity': 7,
-    'Dragoon': 8,
-    'Monk': 9,
-    'Thief': 10,
-    'Knight': 11,
-    'Samurai': 12,
-    'Ninja': 13,
-}
-
-ABILITY_ID_NAME = {
-    1: 'Black Magic',
-    2: 'White Magic',
-    3: 'Summoning',
-    4: 'Spellblade',
-    5: 'Combat',
-    6: 'Support',
-    7: 'Celerity',
-    8: 'Dragoon',
-    9: 'Monk',
-    10: 'Thief',
-    11: 'Knight',
-    12: 'Samurai',
-    13: 'Ninja',
-}
-
-EQUIP_ID_NAME = {}
-for k, v in CATEGORY_ID.items():
-    if ABILITY_ID_NAME.get(v) == k:
-        continue
-    EQUIP_ID_NAME[v] = k
-
-WEAPON = 1
-ARMOR = 2
-ACCESSORY = 3
+### START CLASS DEFINITIONS ###
 
 
 # Should this be BetterBase?
@@ -119,1411 +60,8 @@ class About(object):
     )
 
 
-WORLD_TYPE = {
-    1: 'Realm',
-    2: 'Challenge',
-}
+### END CLASS DEFINITIONS ###
 
-
-class World(BetterBase):
-    __tablename__ = 'world'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String(length=32), nullable=False)
-
-    series_id = Column(Integer, nullable=False)
-    opened_at = Column(ArrowType, nullable=False)
-    # Worlds_1.opened_at = 2014-05-01T06:00:00+00:00
-    closed_at = Column(ArrowType, nullable=False)
-    kept_out_at = Column(ArrowType, nullable=False)
-    world_type = Column(TINYINT, nullable=False)
-
-    dungeons = relationship('Dungeon', backref='world')
-
-    frontend_columns = (
-        ('name', 'Name'),
-        ('series_id', 'Series'),
-        ('opened_at', 'Opened at'),
-        ('kept_out_at', 'Kept out at'),
-        # TODO 2015-05-11
-        # Format and highlight open/closed events
-    )
-
-    @property
-    def extra_tabs(self):
-        return (
-            {
-                'id': 'dungeons',
-                'title': 'Dungeons',
-                # This should use a Bottle().get_url()
-                #'data_url': '/json?category=dungeon&filter={}'.format(
-                #    self.search_id),
-                'data_url': '/dungeons.json?world_id={}'.format(
-                    self.search_id),
-                #'search_id': self.search_id,
-                'columns': (
-                    ('challenge_level', 'Difficulty'),
-                    #('world_name', 'Realm'),
-                    ('name', 'Name'),
-                    ('type', 'Type'),
-                    ('conditions',
-                     'Conditions <span data-container="body" data-toggle="tooltip" title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
-                    ('stamina', 'Stamina'),
-                    ('shards',
-                     'Shards <span data-container="body" data-toggle="tooltip" title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
-                    ('prizes', 'Rewards'),
-                ),
-                #'columns': (
-                #       ('challenge_level', 'Difficulty'),
-                #       ('name', 'Name'),
-                #       ('dungeon_type', 'Dungeon Type'),
-                #   ),
-            },
-        )
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in self.frontend_columns:
-            attr = self.__getattribute__(k)
-            if isinstance(attr, (arrow.arrow.Arrow, arrow.arrow.datetime)):
-                main_stats.append(
-                    '{}: <abbr title="{}" data-livestamp="{}"></abbr>'.format(
-                        v,
-                        attr.strftime(STRFTIME),
-                        attr
-                    )
-                )
-            else:
-                main_stats.append('{}: {}'.format(v, attr))
-
-        now = arrow.now()
-        if now < self.opened_at:
-            main_stats.append(
-                '{} will be available <abbr title="{}" data-livestamp="{}"></abbr>.'\
-                .format(
-                    WORLD_TYPE[self.world_type],
-                    self.opened_at.strftime(STRFTIME),
-                    self.opened_at
-                )
-            )
-        if now > self.closed_at:
-            # All events seem to close_at three days after we are kept_out_at
-            # even though there is no redemption period for "challenge" types
-            main_stats.append(
-                '{} closed <abbr title="{}" data-livestamp="{}"></abbr>.'\
-                .format(
-                    WORLD_TYPE[self.world_type],
-                    self.closed_at.strftime(STRFTIME),
-                    self.closed_at
-                )
-            )
-        if now < self.kept_out_at and self.world_type == 2:
-            main_stats.append(
-                '{} will end <abbr title="{}" data-livestamp="{}"></abbr>.'\
-                .format(
-                    WORLD_TYPE[self.world_type],
-                    self.kept_out_at.strftime(STRFTIME),
-                    self.kept_out_at
-                )
-            )
-
-        self._main_panels = (
-            {
-                'title': 'Main Stats',
-                'items': main_stats,
-                #'footer': '<span class="glyphicon glyphicon-asterisk" aria-hidden="true"></span>Local time zones to be implemented.',
-            },
-        )
-
-    def __init__(self, **kwargs):
-        self.world_type = kwargs['type']
-        #kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
-        #kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
-        #kwargs['kept_out_at'] = datetime.fromtimestamp(kwargs['kept_out_at'])
-        kwargs['opened_at'] = arrow.get(kwargs['opened_at'])
-        kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
-        kwargs['kept_out_at'] = arrow.get(kwargs['kept_out_at'])
-        for i in (
-            'bgm',
-            'door_image_path',
-            'has_new_dungeon',
-            'image_path',
-            'is_unlocked',
-            'type',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(World, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '[{}] {}'.format(WORLD_TYPE[self.world_type], self.name)
-
-def get_active_events(now=None):
-    '''
-    Return an iterable of the current active events.
-
-    May return events active at the optional now kwarg datetime.
-    '''
-
-    events = []
-    with session_scope() as session:
-        q = session.query(World)\
-                   .filter(World.world_type == 2)\
-                   .order_by(World.opened_at)
-
-        if now is None:
-            now = arrow.now()
-
-        events = q.filter(World.opened_at <= now)\
-                  .filter(World.kept_out_at > now).all()
-        session.expunge_all()
-    return events
-
-PRIZE_TYPE = {
-    1: 'Completion Reward',
-    2: 'First Time Reward',
-    3: 'Mastery Reward',
-}
-
-class Prize(BetterBase):
-    __tablename__ = 'prize'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(length=32), nullable=False)
-    prize_type = Column(TINYINT, nullable=False)
-    count = Column(Integer, nullable=False)
-
-    drop_type = Column(String(length=16), nullable=False)
-    drop_id = Column(Integer, ForeignKey('drop.id'), nullable=False)
-    dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=False)
-
-    drop = relationship('Drop', backref=backref('prizes'))
-    dungeon = relationship('Dungeon',
-                           backref=backref('prizes',
-                                           order_by='Prize.prize_type'))
-
-    @property
-    def search_id(self):
-        return self.drop_id
-
-    def __init__(self, **kwargs):
-        kwargs['count'] = kwargs['num']
-        kwargs['drop_type'] = kwargs['type_name']
-        for i in (
-            'id',
-            'num',
-            'image_path',
-            'type_name',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Prize, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{} x{} ({})'.format(self.name, self.count,
-                                    PRIZE_TYPE[self.prize_type])
-
-
-# TODO 2015-05-11
-# Replace dungeon_type column with a String?
-DUNGEON_TYPE = {
-    1: 'Classic',
-    2: 'Elite',
-}
-
-class Dungeon(BetterBase):
-    __tablename__ = 'dungeon'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    world_id = Column(Integer, ForeignKey('world.id'), nullable=False)
-    series_id = Column(Integer, nullable=False)
-    name = Column(String(length=64), nullable=False)
-    dungeon_type = Column(TINYINT, nullable=False)
-    challenge_level = Column(SMALLINT, nullable=False)
-
-    opened_at = Column(ArrowType, nullable=False)
-    # Dungeons_1.opened_at = 2014-05-01T06:00:00+00:00
-    # Dungeons_2.opened_at = 2014-01-01T06:00:00+00:00
-    # Dungeons_3.opened_at = 2014-09-17T03:00:00+00:00
-    closed_at = Column(ArrowType, nullable=False)
-    prologue = Column(String(length=1024), nullable=True)
-    epilogue = Column(String(length=1024), nullable=True)
-
-    battles = relationship('Battle', backref='dungeon')
-
-    frontend_columns = (
-        ('challenge_level', 'Difficulty'),
-        ('name', 'Name'),
-        ('dungeon_type', 'Dungeon Type'),
-    )
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in self.frontend_columns:
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
-        #main_stats.append(
-        main_stats[-1] =\
-            'Dungeon Type: {}'.format(DUNGEON_TYPE[self.dungeon_type])
-#        )
-        main_stats.insert(0, '<a href="/{}">{}</a>'.format(
-            self.world.search_id, self.world))
-        # TODO 2015-05-11
-        # Copy the opened_at/closed_at items from World?
-
-        self._main_panels = [
-            {
-                'title': 'Main Stats',
-                'items': main_stats,
-            },
-            {
-                'title': 'Prologue',
-                'body': self.prologue,
-            },
-        ]
-        # Daily dungeons do not have a prologue
-        if self.epilogue:
-            self._main_panels.append(
-                {
-                    'title': 'Epilogue',
-                    #'body': self.epilogue,
-                    'body': 'spoilers',
-                    # TODO 2015-05-11
-                    'footer': 'Add markup with spoiler protection',
-                }
-            )
-        battles = []
-        total_stam = 0
-        # This is repeated three times
-        conditions = []
-        conditions_count = 0
-        all_conditions_present = True
-        # TODO 2015-05-18
-        # Put battles in tabs
-        for battle in self.battles:
-            item = '<a href="/{}">{} ({} round(s)) [{} stamina]</a>'.format(
-                battle.search_id, battle.name,
-                battle.round_num, battle.stamina)
-            if battle.has_boss:
-                item = '<strong>{}</strong>'.format(item)
-            battles.append(item)
-            total_stam += battle.stamina
-            if not battle.conditions:
-                all_conditions_present = False
-            for c in battle.conditions:
-                conditions_count += 1
-                # Filter out the standard conditions
-                if c.condition_id not in (1001, 1002, 1004):
-                    conditions.append(str(c))
-
-        self._main_panels[0]['items'].append(
-            'Total stamina required: {}'.format(total_stam))
-
-        conditions_body = None
-        if not all_conditions_present:
-            if conditions_count:
-                conditions_body = 'We are missing some conditions for this dungeon.'
-            else:
-                conditions_body = 'We have not imported any conditions for this dungeon.'
-        elif not conditions:
-            conditions_body = 'There are no specific conditions for this dungeon.'
-
-        self._main_panels.append(
-            {
-                'title': 'Specific Conditions',
-                'body': conditions_body,
-                'items': conditions,
-                'footer': 'You may lose a max of {} medals and still achieve mastery for this dungeon.'.format(conditions_count//2) if all_conditions_present else '',
-            }
-        )
-
-        self._main_panels.append(
-            {
-                'title': 'Battles',
-                'items': battles,
-                'footer': 'Bold battle name indicates a boss.',
-            },
-        )
-        self._main_panels.append(
-            {
-                'title': 'Prizes',
-                'items': ('<a href="/{}">{}</a>'.format(prize.search_id, prize)
-                          if prize.drop_type != 'COMMON' else
-                          '{}'.format(prize) for prize in self.prizes),
-                # Maybe make the items accordian expand or at least group
-                # visually by prize.drop_type
-                'footer': 'The "Completion Reward" may be obtained multiple times.',
-            },
-        )
-        self._main_panels.append(
-            {
-                'title': 'Enemies',
-                #'items': ('<a href="/{}">{}</a>'.format(enemy.search_id, enemy) for enemy in self.enemies),
-                'footer': '*To be implemented (maybe).',
-            },
-        )
-        self._main_panels.append(
-            {
-                'title': 'Drops',
-                #'items': ('<a href="/{}">{} from {}</a>'.format(drop.drop_id, drop.drop.name, drop.enemy) for drop in self.drops),
-                #'footer': 'These locations are not all inclusive and the drop rates may vary.',
-                'footer': '*To be implemented (maybe).',
-            },
-        )
-
-    def __init__(self, **kwargs):
-        kwargs['dungeon_type'] = kwargs['type']
-        #kwargs['opened_at'] = datetime.fromtimestamp(kwargs['opened_at'])
-        #kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
-        kwargs['opened_at'] = arrow.get(kwargs['opened_at'])
-        kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
-        kwargs['epilogue'] = kwargs['epilogue'].encode(
-            sys.stdout.encoding, errors='ignore')
-        kwargs['prologue'] = kwargs['prologue'].encode(
-            sys.stdout.encoding, errors='ignore')
-        for i in (
-            'background_image_path',
-            'rank',
-            'order_no',
-            'is_new',
-            'is_unlocked',
-            'is_clear',
-            'is_master',
-            'bgm',
-            'prologue_image_path',
-            'epilogue_image_path',
-            'prizes',
-            'type',
-
-            # Added 2015-06-07
-            'captures',
-            'button_style',
-            'total_stamina',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Dungeon, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{}/{} ({}) [{}]'.format(
-            self.world, self.name,
-            DUNGEON_TYPE[self.dungeon_type], self.challenge_level)
-
-def find_dungeons_with_no_battles():
-    '''
-    Output which dungeons have no battles in our database for re-population.
-    '''
-    with session_scope() as session:
-        dungeons = session.query(Dungeon).filter(~Dungeon.battles.any()).all()
-        for dungeon in dungeons:
-            logging.warning('{} has no battles'.format(dungeon))
-
-def find_battles_with_no_conditions(boss=False):
-    '''
-    Output which battles have no conditions.
-    '''
-    # TODO 2015-05-29
-    # Output boss battles with only 3 conditions.
-    with session_scope() as session:
-        battles = session.query(Battle)\
-                         .filter(~Battle.conditions.any())
-        for battle in battles.all():
-            logging.warning('{} has no conditions'.format(battle.id))
-
-def get_content_dates(event=None):
-    '''
-    Return an iterable of the main content update dates.
-    '''
-    dates = ()
-    with session_scope() as session:
-        world_query = session.query(World)
-        if event:
-            worlds = world_query.filter(World.world_type == 2)
-        else:
-            worlds = world_query.filter(World.world_type == 1)
-        world_ids = (i.id for i in worlds)
-        dungeons = session.query(Dungeon)\
-                          .filter(Dungeon.world_id.in_(world_ids))\
-                          .options(load_only(Dungeon.opened_at))\
-                          .order_by(Dungeon.opened_at)\
-                          .group_by(Dungeon.opened_at).all()
-        # List not generator because I need the length
-        dates = [d.opened_at for d in dungeons]
-        session.expunge_all()
-    return dates
-
-def get_dungeons(content=None, event=None, world_id=None):
-    '''
-    Return an iterable of dungeons corresponding to a main content update.
-
-    A content of 1 (or less) will return all dungeons.
-    A null content or content greater than the number of content patches will
-    return the latest batch only.
-    '''
-    try:
-        world_id = int(world_id)
-    except (ValueError, TypeError):
-        world_id = None
-    if world_id is not None:
-        dungeons = ()
-        with session_scope() as session:
-            # DetachedInstanceError
-            #world = session.query(World).filter(World.id == world_id).one()
-            #dungeons = world.dungeons
-            dungeons = session.query(Dungeon)\
-                       .options(subqueryload(Dungeon.world))\
-                       .options(subqueryload(Dungeon.prizes))\
-                       .options(subqueryload(Dungeon.battles))\
-                       .filter(Dungeon.world_id == world_id)\
-                       .order_by(Dungeon.challenge_level, Dungeon.id).all()
-            session.expunge_all()
-        return dungeons
-
-    if content == 'all':
-        content = 0
-    if content == 'latest':
-        content = sys.maxsize
-    try:
-        content = int(content)
-    except (ValueError, TypeError):
-        content = sys.maxsize
-
-    dungeons = []
-    with session_scope() as session:
-        worlds = session.query(World)
-        if event:
-            worlds = worlds.filter(World.world_type == 2)
-        else:
-            worlds = worlds.filter(World.world_type == 1)
-        world_ids = (i.id for i in worlds)
-
-        # This selects all the dungeons in an event or world
-        dungeon_query = session.query(Dungeon)\
-                               .options(subqueryload(Dungeon.world))\
-                               .options(subqueryload(Dungeon.prizes))\
-                               .options(subqueryload(Dungeon.battles))\
-                               .filter(Dungeon.world_id.in_(world_ids))
-
-        if content <= 1:
-            # We want all the dungeons from the beginning
-            dungeons = dungeon_query.all()
-        else:
-            # else we want to start from a specific content update
-            # Get the dates dungeons were opened_at
-            dates = get_content_dates(event=event)
-            # If someone is asking for content from the future return the
-            # latest content update only
-            content = min(content, len(dates))
-            # Subtract one from the content number because we count the original
-            # content as "1" and not "0", also avoid IndexError
-            content -= 1
-            # Get the datetime this update was released
-            opened_at = dates[content]
-            # Now we can finally get all the dungeons released after this time
-            dungeons = dungeon_query.filter(
-                Dungeon.opened_at >= opened_at)\
-                .order_by(Dungeon.challenge_level, Dungeon.id).all()
-        session.expunge_all()
-    return dungeons
-
-
-condition_table = Table('condition_table', BetterBase.metadata,
-                    Column('battle_id', Integer,
-                           ForeignKey('battle.id'), nullable=False),
-                    Column('condition_id', Integer,
-                           ForeignKey('condition.id'), nullable=False)
-)
-
-class Condition(BetterBase):
-    __tablename__ = 'condition'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    condition_id = Column(SMALLINT, nullable=False)
-    code_name = Column(String(length=32), nullable=False)
-    title = Column(String(length=128), nullable=False)
-    #medal_num = Column(TINYINT, nullable=False)
-
-    battles = relationship('Battle',
-                           secondary=condition_table,
-                           backref=backref('conditions', lazy='subquery'))
-
-    def __init__(self, **kwargs):
-        kwargs['condition_id'] = kwargs['id']
-        for i in (
-            'id',
-            'medal_num',
-
-            # Added 2015-06-07
-            'battle_specific_score_id',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-
-        super(Condition, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return self.title
-
-
-enemy_table = Table('enemy_table', BetterBase.metadata,
-                    Column('enemy_id', Integer,
-                           ForeignKey('enemy.id'), nullable=False),
-                    Column('battle_id', Integer,
-                            ForeignKey('battle.id'), nullable=False),
-)
-
-class Battle(BetterBase):
-    __tablename__ = 'battle'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=False)
-    name = Column(String(length=64), nullable=False)
-    round_num = Column(TINYINT, nullable=False)
-    has_boss = Column(Boolean, nullable=False)
-    stamina = Column(TINYINT, nullable=False)
-
-    # TODO 2015-05-22
-    # sort by Enemy.is_sp_enemy
-    enemies = relationship('Enemy', secondary=enemy_table, backref='battles')
-
-    # TODO 2015-05-19
-    #messages = a many-to-many backref
-
-    def generate_main_panels(self):
-        main_stats = []
-
-        self._main_panels = [
-            {
-                'title': 'Main Stats',
-                'items': main_stats + [
-                    'Name: {}'.format(self.name),
-                    'Dungeon: {}'.format(
-                        '<a href="/{}">{}</a>'.format(
-                            self.dungeon.search_id,
-                            str(self.dungeon),
-                            #self.dungeon.name,
-                        )
-                    ),
-                    'Round(s): {}'.format(self.round_num),
-                    'Stamina: {}'.format(self.stamina),
-                ],
-            },
-        ]
-
-        if self.has_boss:
-            self._main_panels.append(
-                {
-                    'title': 'Boss',
-                    'footer': '*To be implemented (maybe).',
-                }
-            )
-
-        # This is repeated three times
-        conditions = []
-        conditions_count = 0
-        for c in self.conditions:
-            conditions_count += 1
-            # Filter out the standard conditions
-            if c.condition_id not in (1001, 1002, 1004):
-                conditions.append(str(c))
-        conditions_body = None
-        if conditions_count == 0:
-            conditions_body = 'We have not imported any conditions for this battle.'
-        elif conditions_count == 3:
-            conditions_body = 'There are no specific conditions for this battle.'
-        self._main_panels.append(
-            {
-                'title': 'Specific Conditions',
-                'body': conditions_body,
-                'items': conditions,
-                'footer': 'You may lose a max of {} medals and still achieve champion for this battle.'.format(conditions_count//2) if conditions_count else '',
-            }
-        )
-
-        enemies = []
-        for enemy in sorted(self.enemies, key=lambda x: x.is_sp_enemy):
-            item = '<a href="/{}">{}</a>'.format(enemy.search_id, enemy)
-            if enemy.is_sp_enemy:
-                item = '<strong>{}</strong>'.format(item)
-            enemies.append(item)
-        self._main_panels.append(
-            {
-                'title': 'Enemies',
-                'body': '' if self.enemies else 'No items found in database.',
-                'items': enemies,
-                'footer': 'These items are not all inclusive.<br>Bold name indicates a boss.'
-            }
-        )
-
-        drops = []
-        for drop in sorted(self.drops, key=lambda x: x.drop_id):
-            if drop.drop_id > 90000000:
-                # Filter out 'COMMON' drops
-                continue
-            item = '<a href="/{}">{} from {}</a>'.format(
-                    drop.drop_id, drop.drop.name, drop.enemy)
-            if drop.enemy.is_sp_enemy:
-                item = '<strong>{}</strong>'.format(item)
-            drops.append(item)
-        self._main_panels.append(
-            {
-                'title': 'Drops',
-                'body': '' if self.drops else 'No items found in database.',
-                'items': drops,
-                'footer': 'Bold indicates a boss.<br>*To be improved (maybe).',
-            }
-        )
-
-    def __init__(self, **kwargs):
-        for i in (
-            'order_no',
-            'rank',
-            'is_unlocked',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-
-        super(Battle, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{}>{}'.format(self.dungeon, self.name)
-
-
-ATTRIBUTE_ID = {
-    # Elements
-    100: 'Fire',
-    101: 'Ice',
-    102: 'Lightning',
-    103: 'Earth',
-    104: 'Wind',
-    105: 'Water',
-    106: 'Holy',
-    107: 'Dark',
-    108: 'Poison (Bio)',
-
-    # Status
-    200: 'Poison (Status)',
-    201: 'Silence',
-    202: 'Paralysis',
-    203: 'Confuse',
-    204: 'Haste',
-    205: 'Slow',
-    206: 'Stop',
-    207: 'Protect',
-    208: 'Shell',
-    209: 'Reflect',
-    210: 'Blind',
-    211: 'Sleep',
-    212: 'Petrify',
-    213: 'Doom',
-    214: 'Death',
-    215: 'Berserk',
-    216: 'Regen',
-    217: 'Reraise',
-    218: 'Float',
-    219: 'Weak',
-    220: 'Zombie',
-    221: 'Mini',
-    222: 'Toad',
-    223: 'Curse',
-    224: 'Slownumb',
-    225: 'Blink',
-    #226: 'Water Imp',
-    #227: 'Vanish',
-    #228: 'Porky',
-    #229: 'Sap',
-}
-
-FACTOR = {
-    21: 'Absorb',
-    11: 'Null',
-    6: 'Resist',
-    1: 'Weak',
-}
-
-FACTOR_STATUS = {
-    1: 'Immune',
-    0: 'Vulnerable',
-}
-
-def get_factor(attribute_id, factor):
-    if attribute_id < 200:
-        return FACTOR.get(factor)
-    return FACTOR_STATUS.get(factor)
-
-class AttributeAssociation(BetterBase):
-    __tablename__ = 'attribute_table'
-    attribute_id = Column(Integer, ForeignKey('attribute.id'), primary_key=True)
-    param_id = Column(Integer, primary_key=True, autoincrement=False)
-    # Not a ForeignKey('enemy.param_id') because enemy.param_id is not unique
-
-    attribute = relationship('Attribute')
-
-    def __init__(self, **kwargs):
-        super(AttributeAssociation, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{}'.format(self.attribute)
-
-class Attribute(BetterBase):
-    __tablename__ = 'attribute'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    attribute_id = Column(TINYINT(unsigned=True), nullable=False)
-    factor = Column(TINYINT, nullable=False)
-    #name = Column(String(length=16))
-
-    def __init__(self, **kwargs):
-        super(Attribute, self).__init__(**kwargs)
-        #self.name = ATTRIBUTE_ID.get(self.attribute_id, '')
-
-    def __repr__(self):
-        #return '{}: {}'.format(
-        #    self.name, get_factor(self.attribute_id, self.factor))
-        return '{}: {}'.format(
-            ATTRIBUTE_ID.get(self.attribute_id, self.attribute_id),
-            get_factor(self.attribute_id, self.factor)
-        )
-
-# 2015-05-27
-# Maybe deprecated depending on status of Attribute.name
-def populate_attribute_names():
-    '''
-    Get Attribute() objects with no name and attempts to populate the name.
-    This might run with cron although the name are hardcoded.
-    '''
-    with session_scope() as session:
-        attributes = session.query(Attribute).filter(Attribute.name == '').all()
-        for attribute in attributes:
-            attribute.name = ATTRIBUTE_ID.get(attribute.attribute_id, '')
-            if not attribute.name:
-                logging.warning(
-                    'Attribute({}) still has no name.'.format(attribute))
-
-
-class Enemy(BetterBase):
-    __tablename__ = 'enemy'
-    # id is our database unique primary_key (for different stats/levels)
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    # Vargas and Ipooh have the same enemy_id
-    enemy_id = Column(Integer, nullable=False)
-    # param_id is the unique id per enemy
-    # Dullahan has multiple param_ids for the different resistances
-    param_id = Column(Integer, nullable=False)
-    name = Column(String(length=32), nullable=False)
-    # There are at least two different Enemy.filter(Enemy.name == 'Behemoth')
-    # And unlike Flan there is not a Realm identifier in the name
-    breed_id = Column(TINYINT, nullable=False)
-    size = Column(TINYINT, nullable=False)
-    is_sp_enemy = Column(TINYINT, nullable=False)
-    event_id = Column(SMALLINT, nullable=True)
-    event_type = Column(String(length=16), nullable=True)
-
-    lv = Column(TINYINT, nullable=False)
-    max_hp = Column(Integer, nullable=False)
-    acc = Column(SMALLINT, nullable=False)
-    atk = Column(SMALLINT, nullable=False)
-    critical = Column(SMALLINT, nullable=False)
-    defense = Column(SMALLINT, nullable=False)
-    eva = Column(SMALLINT, nullable=False)
-    looking = Column(Integer, nullable=False)
-    matk = Column(SMALLINT, nullable=False)
-    mdef = Column(SMALLINT, nullable=False)
-    mnd = Column(SMALLINT, nullable=False)
-    spd = Column(SMALLINT, nullable=False)
-
-    #counters = relationship('counters')
-    exp = Column(SMALLINT, nullable=False)
-
-    frontend_columns = (
-        ('name', 'Name'),
-        ('is_sp_enemy', 'Boss'),
-        ('event_id', 'Event ID'),
-    )
-
-    @property
-    def search_id(self):
-        # enemy_id 4xxxxx may have the same id as the elite dungeon it is in
-        # So we have to query by param_id or use get_by_id(enemy=True)
-        #return self.enemy_id
-        return self.param_id
-
-    def get_attributes(self):
-        aas = []
-        with session_scope() as session:
-            aas = session.query(AttributeAssociation)\
-                        .filter(AttributeAssociation.param_id == self.param_id)\
-                        .options(subqueryload(AttributeAssociation.attribute))\
-                        .all()
-            session.expunge_all()
-        return aas
-
-    def generate_main_panels(self):
-        self._main_panels = [
-            {
-                'title': 'Main Stats',
-                'items': [
-                    'Name: {}'.format(self.name),
-                ],
-            },
-        ]
-
-        # get_by_id() does not work here because we need the group_by
-        params = []
-        with session_scope() as session:
-            q = session.query(Enemy)\
-                       .filter(Enemy.enemy_id == self.enemy_id)\
-                       .group_by('param_id')
-            params = q.all()
-            session.expunge_all()
-
-        for param in params:
-            aas = param.get_attributes()
-            self._main_panels.append(
-                {
-                    'title': 'Resistances',
-                    'body': param.name,  # picture probably
-                    'items': sorted(
-                        aas,
-                        key=lambda x: x.attribute.attribute_id
-                    ),
-                    'footer': '*To be improved (maybe).',
-                }
-            )
-
-        self._main_panels += (
-            {
-                'title': 'Abilities',
-                'footer': '*To be implemented (hopefully).',
-            },
-            {
-                'title': 'Battle Locations',
-                'footer': '*To be implemented (maybe).',
-            },
-            {
-                'title': 'Drops',
-                'footer': '*To be implemented (maybe).',
-            },
-        )
-        if self.is_sp_enemy:
-            self._main_panels[0]['items'].append('BOSS')
-
-    @property
-    def extra_tabs(self):
-        return (
-            {
-                'id': 'stats',
-                'title': 'Stats by Level',
-                'search_id': self.enemy_id,
-                'extra_params': '&enemy=1',
-                'columns': (
-                    ('name', 'Name'),
-                    ('lv', 'Level'),
-                    ('max_hp', 'Max HP'),
-                    ('atk', 'ATK'),
-                    ('acc', 'ACC'),
-                    ('critical', 'Critical'),
-                    ('defense', 'DEF'),
-                    ('eva', 'EVA'),
-                    ('matk', 'MAG'),
-                    ('mdef', 'RES'),
-                    ('mnd', 'MIND'),
-                    ('spd', 'SPD'),
-                    ('exp', 'EXP'),
-                ),
-            },
-        )
-
-    def __init__(self, **kwargs):
-        for k, v in kwargs['params'].items():
-            kwargs[k] = v
-        kwargs['defense'] = kwargs['def']
-        kwargs['name'] = kwargs['disp_name']
-        kwargs['param_id'] = kwargs['params']['id']
-        for i in (
-            'id',
-            'ai_id',
-            'child_pos_id',
-            'init_hp',
-            'no',
-            'params',
-            'def',
-            'disp_name',
-            'counters',
-            'def_attributes',
-            'animation_info',
-            'uid',
-            'deform_animation_info',
-            'drop_item_list',
-            'abilities',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Enemy, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{} ({})'.format(self.name, self.lv)
-
-
-class AbilityCost(BetterBase):
-    __tablename__ = 'abilitycost'
-    ability_id = Column(Integer, ForeignKey('ability.id'), primary_key=True)
-    material_id = Column(Integer, ForeignKey('material.id'), primary_key=True)
-    count = Column(TINYINT, nullable=False)
-
-    material = relationship('Material',
-                            backref=backref('abilities', lazy='select'),
-                            #backref=backref('abilities', lazy='immediate'),
-                            #backref=backref('abilities', lazy='joined'),
-                            #backref=backref('abilities', lazy='subquery'),
-                            #backref=backref('abilities', lazy='noload'),
-                            #backref=backref('abilities', lazy='dynamic'),
-                            #order_by='Ability.id',
-    )
-    ability = relationship('Ability',
-                           backref=backref('materials', lazy='select'),
-                           #backref=backref('materials', lazy='immediate'),
-                           #backref=backref('materials', lazy='joined'),
-                           #backref=backref('materials', lazy='subquery'),
-                           #backref=backref('materials', lazy='noload'),
-                           #backref=backref('materials', lazy='dynamic'),
-    )
-
-    def __init__(self, **kwargs):
-        super(AbilityCost, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{} {}'.format(self.count, self.material)
-
-
-class Ability(BetterBase):
-    __tablename__ = 'ability'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    ability_id = Column(Integer, nullable=False)
-    name = Column(String(length=32), nullable=False)
-    description = Column(String(length=256), nullable=False)
-
-    rarity = Column(TINYINT, nullable=False)
-    category_id = Column(TINYINT, nullable=False)
-    category_name = Column(String(length=32), nullable=False)
-                  # ('Spellblade', 'Celerity', 'Combat', etc.)
-    category_type = Column(TINYINT, nullable=False)
-                  # {1:Physical, 2:White, 3:Black, 4:Summon, 5:Other}
-    target_range = Column(TINYINT, nullable=False)
-                  # {1:Single, 2:AOE, 3:Self}
-
-    grade = Column(TINYINT, nullable=False)
-    next_grade = Column(TINYINT, nullable=False)
-    max_grade = Column(TINYINT, nullable=False)
-    arg1 = Column(TINYINT, nullable=False)  # Number of casts
-    #arg2 = Column(TINYINT, nullable=False)  # Unknown (all are zero)
-    #arg3 = Column(TINYINT, nullable=False)  # Unknown (all are zero)
-    required_gil = Column(Integer, nullable=False)
-    sale_gil = Column(SMALLINT, nullable=False)
-
-    frontend_columns = (
-        ('name', 'Name'),
-        ('rarity', 'Rarity'),
-        ('category_name', 'Category'),
-        ('category_type', 'Category Type'),
-    )
-
-    main_columns = frontend_columns + (('grade', 'Grade'), ('arg1', 'Casts'),)
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in self.frontend_columns:
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
-        main_stats.append('Target Range: {}'.format(self.target_range))
-
-        self._main_panels = [
-            {
-                'title': 'Main Stats',
-                'body': self.description if self.description else '',
-                'items': main_stats,
-            },
-        ]
-
-        with session_scope() as session:
-            # The self.materials backref does not help here
-            # because they are only applicable to this self.id
-            # and not to the self.ability_id
-            grades = session.query(Ability).filter_by(
-                ability_id=self.ability_id).order_by(
-                    'grade').all()
-            for grade in grades:
-                grade_panel = {'title': 'Grade {}'.format(grade.grade)}
-                gil = grade.required_gil
-                if gil is None or gil == 32767:
-                    gil = 'Unknown'
-                grade_panel['items'] = [
-                    'Casts: {}'.format(grade.arg1),
-                    'Creation/Enhancement cost: {}'.format(gil),
-                    'Sale gil: {}'.format(grade.sale_gil),
-                ]
-                for cost in grade.materials:
-                    grade_panel['items'].append(
-                        '<a href="/{}">{}: {} Orbs</a>'.format(
-                            cost.material.search_id, cost.material, cost.count)
-                    )
-                self._main_panels.append(grade_panel)
-
-        self._main_panels.append(
-            {
-                'title': 'Total required',
-                'footer': '*To be implemented (maybe).',
-            }
-        )
-
-    @property
-    def search_id(self):
-        return self.ability_id
-
-    def __init__(self, **kwargs):
-        if kwargs['arg2'] or kwargs['arg3']:
-            logging.critical(
-                'Ability {} has additional args'.format(kwargs['name']))
-        for i in (
-            'arg2',  # all zero
-            'arg3',  # all zero
-            'factor_category',  # all one
-            'command_icon_path',
-            'image_path',
-            'thumbnail_path',
-            'material_id_2_num',
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Ability, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '[{}*] {} {}/{}'.format(
-            self.rarity, self.name, self.grade, self.max_grade)
-
-
-'''
-class EnemyAbility(BetterBase):
-    __tablename__ = 'enemy_ability'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String(length=32))
-
-    def __init__(self, **kwargs):
-        super(EnemyAbility, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return self.name
-'''
-
-
-class Drop(BetterBase):
-    __tablename__ = 'drop'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String(length=32), default='')
-
-    def __repr__(self):
-        if self.name:
-            return self.name
-        return str(self.id)
-
-    def populate_name(self):
-        if self.name is not None:
-            return
-
-        name = get_name_by_id(self.id)
-        if name != self.id:
-            self.name = name
-            new_log = Log(log='Add name to Drop({})'.format(self))
-            with session_scope() as session:
-                session.add(new_log)
-
-def populate_drop_names():
-    '''
-    Get Drop() objects with no name and attempts to populate the name.
-    This might run with cron.
-    '''
-    with session_scope() as session:
-        drops = session.query(Drop).filter(Drop.name == '').all()
-        for drop in drops:
-            drop.populate_name()
-            if not drop.name:
-                logging.warning('Drop({}) still has no name.'.format(drop))
-
-
-class Material(BetterBase):
-    __tablename__ = 'material'
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String(length=64), nullable=False)
-    rarity = Column(TINYINT, nullable=False)
-    sale_gil = Column(SMALLINT, nullable=False)
-    description = Column(String(length=256), nullable=False)
-
-    frontend_columns = (
-        ('name', 'Name'),
-        ('rarity', 'Rarity'),
-        ('sale_gil', 'Sale gil'),
-        #('description', 'Description'),
-    )
-
-    main_columns = frontend_columns
-
-    @property
-    def search_id(self):
-        return self.id
-
-    '''
-    # There is only one item with self.search_id
-    @property
-    def extra_tabs(self):
-        return (
-            {
-                'id': 'stats',
-                'title': 'Stats by Rarity',
-                'columns': self.main_columns,
-                'search_id': self.search_id,
-            },
-        )
-    '''
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in self.main_columns:
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
-
-        crafting_recipes = []
-        for cost in sorted(self.abilities,
-                        key=lambda x: x.ability.ability_id + x.ability.grade):
-            # It would be cool to make each ability item expand to show the
-            # cost per grade on the frontend.
-            crafting_recipes.append(
-                '<a href="/{}">{}: {} Orbs</a>'.format(
-                    cost.ability.search_id, cost.ability, cost.count)
-            )
-
-        # This is repeated in Relic.main_panels
-        # This queries drop_table, enemy, world, dungeon, battle
-        # TODO 2015-05-11
-        # Filter out (expired?) events
-        drop_locations = []
-        with session_scope() as session:
-            drops = session.query(DropAssociation).filter_by(
-                drop_id=self.search_id).options(subqueryload('enemy')).all()
-            for drop in drops:
-                drop_locations.append(
-                    '<a href="/{}">{}</a>'.format(
-                        drop.enemy.search_id, str(drop)))
-
-        self._main_panels = (
-            {
-                'title': 'Main Stats',
-                'body': self.description if self.description else '',
-                'items': main_stats,
-            },
-            {
-                'title': 'Abilities',
-                'items': crafting_recipes,
-                'footer': '*To be improved.',
-            },
-            {
-                'title': 'Drop Locations',
-                'items': drop_locations,
-                'footer': 'These locations are not all inclusive and the drop rates may vary.',
-            },
-        )
-
-    def __init__(self, **kwargs):
-        for i in ('image_path', 'created_at', 'num'):
-            if i in kwargs:
-                del(kwargs[i])
-        super(Material, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{}'.format(self.name)
-
-
-class Relic(BetterBase):
-    __tablename__ = 'relic'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    equipment_id = Column(Integer)
-    name = Column(String(length=64), nullable=False)
-    base_rarity = Column(TINYINT, nullable=False)
-    rarity = Column(TINYINT, nullable=False)
-    level = Column(TINYINT, nullable=False)
-    level_max = Column(TINYINT, nullable=False)
-    evolution_num = Column(TINYINT, nullable=False)
-    max_evolution_num = Column(TINYINT, nullable=False)
-    can_evolve_potentially = Column(Boolean, nullable=False)
-    is_max_evolution_num = Column(Boolean, nullable=False)
-    series_id = Column(Integer, nullable=False)
-
-    description = Column(String(length=256), nullable=False)
-    has_someones_soul_strike = Column(Boolean, nullable=False)
-    has_soul_strike = Column(Boolean, nullable=False)
-    soul_strike_id = Column(Integer)
-    required_enhancement_base_gil = Column(SMALLINT)
-    required_evolution_gil = Column(Integer)
-    sale_gil = Column(SMALLINT, nullable=False)
-
-    acc = Column(SMALLINT, nullable=False)
-    atk = Column(SMALLINT, nullable=False)
-    critical = Column(SMALLINT, nullable=False)
-    defense = Column(SMALLINT, nullable=False)
-    eva = Column(SMALLINT, nullable=False)
-    matk = Column(SMALLINT, nullable=False)
-    mdef = Column(SMALLINT, nullable=False)
-    mnd = Column(SMALLINT, nullable=False)
-    series_acc = Column(SMALLINT, nullable=False)
-    series_atk = Column(SMALLINT, nullable=False)
-    series_def = Column(SMALLINT, nullable=False)
-    series_eva = Column(SMALLINT, nullable=False)
-    series_matk = Column(SMALLINT, nullable=False)
-    series_mdef = Column(SMALLINT, nullable=False)
-    series_mnd = Column(SMALLINT, nullable=False)
-
-    category_id = Column(TINYINT, nullable=False)
-    category_name = Column(String(length=32), nullable=False)
-    equipment_type = Column(TINYINT, nullable=False)    # 1:"Weapon", 2:"Armor", 3:"Accessory"
-    # "allowed_buddy_id": 0,                            # This might be for specific characters only
-    # "atk_ss_point_factor": 0,                         # I guess this increases the soul strike charge rate?
-    # "def_ss_point_factor": 0,                         # I guess this increases the soul strike charge rate?
-    # "attributes": [],                                 # What?
-    # "can_evolve_now": false,                          # Don't care?
-    # "created_at": 1428491598,                         # Don't care
-    # "exp": 0,                                         # This is the exp for this Relic instance
-    # "id": 49594264,                                   # This is the id for this Relic instance
-    # "is_sp_enhancement_material": false,              # Don't care
-    # "is_usable_as_enhancement_material": false,       # Don't care
-    # "is_usable_as_enhancement_src": false,            # Don't care
-    # "evol_max_level_of_base_rarity": {}               # Don't care
-
-    frontend_columns = (
-        ('name', 'Name'),
-        ('base_rarity', 'Rarity'),
-        ('category_name', 'Category'),
-        #('equipment_type', 'Type'),
-    )
-
-    @property
-    def search_id(self):
-        return self.equipment_id
-
-    @property
-    def extra_tabs(self):
-        return (
-            {
-                'id': 'stats',
-                'title': 'Stats by Level',
-                'search_id': self.search_id,
-                'columns': (
-                    ('rarity', 'Rarity'),
-                    ('level', 'Level'),
-                    ('required_enhancement_base_gil', 'Enhancement cost'),
-                    ('required_evolution_gil', 'Evolution cost'),
-                    ('sale_gil', 'Sale gil'),
-                    ('atk', 'ATK'),
-                    ('critical', 'CRIT'),
-                    ('defense', 'DEF'),
-                    ('acc', 'ACC'),
-                    ('eva', 'EVA'),
-                    ('matk', 'MAG'),
-                    ('mdef', 'RES'),
-                    ('mnd', 'MIND'),
-                    ('series_acc', 'RS ACC'),
-                    ('series_atk', 'RS ATK'),
-                    ('series_def', 'RS DEF'),
-                    ('series_eva', 'RS EVA'),
-                    ('series_matk', 'RS MAG'),
-                    ('series_mdef', 'RS RES'),
-                    ('series_mnd', 'RS MIND'),
-                ),
-            },
-        )
-
-    def generate_main_panels(self):
-        main_stats = []
-        for k, v in self.main_columns:
-            main_stats.append('{}: {}'.format(v, self.__getattribute__(k)))
-        if self.has_soul_strike:
-            main_stats.append('Soul Strike: {} [TO BE IMPLEMENTED]'.format(
-                self.soul_strike_id))
-
-        # This is repeated in Material.main_panels
-        # This queries drop_table, enemy, world, dungeon, battle
-        # TODO 2015-05-11
-        # Filter out (expired?) events
-        drop_locations = []
-        with session_scope() as session:
-            drops = session.query(DropAssociation).filter_by(
-                drop_id=self.search_id).options(subqueryload('enemy')).all()
-            for drop in drops:
-                drop_locations.append(
-                    '<a href="/{}">{}</a>'.format(
-                        drop.enemy.search_id, str(drop)))
-
-        self._main_panels = (
-            {
-                'title': 'Main Stats',
-                'body': self.description if self.description != 'None' else '',
-                'items': main_stats,
-            },
-            {
-                'title': 'Drop Locations',
-                'items': drop_locations,
-                'footer': 'These locations are not all inclusive and the drop rates may vary.',
-            },
-        )
-
-    def __init__(self, **kwargs):
-        name = kwargs['name']
-        name = name.replace(u'\uff0b', '')
-        name = name.encode(sys.stdout.encoding, errors='ignore')
-        kwargs['name'] = name
-        kwargs['defense'] = kwargs['def']
-
-        for i in (
-            "allowed_buddy_id",
-            "atk_ss_point_factor",
-            "def_ss_point_factor",
-            "attributes",
-            "can_evolve_now",
-            "created_at",
-            "exp",
-            "is_sp_enhancement_material",
-            "is_usable_as_enhancement_material",
-            "is_usable_as_enhancement_src",
-            "evol_max_level_of_base_rarity",
-            "detail_image_path",
-            "image_path",
-            "thumbnail_path",
-            "def",
-            "id",
-        ):
-            if i in kwargs:
-                del(kwargs[i])
-
-        super(Relic, self).__init__(**kwargs)
-
-    def __repr__(self):
-        ret = '[{}*] {}'.format(self.rarity, self.name)
-        if self.evolution_num:
-            ret += ' ' + '+'*self.evolution_num
-        ret += ' {}/{}'.format(self.level, self.level_max)
-        return ret
-
-
-class DropAssociation(BetterBase):
-    __tablename__ = 'drop_table'
-    enemy_id = Column(Integer, ForeignKey('enemy.id'), primary_key=True)
-    drop_id = Column(Integer, ForeignKey('drop.id'), primary_key=True)
-    battle_id = Column(Integer, ForeignKey('battle.id'), primary_key=True)
-
-    enemy = relationship('Enemy',
-                         backref=backref('drops'),
-    )
-    drop = relationship('Drop',
-                        backref=backref('drop_associations'),
-    )
-    battle = relationship('Battle',
-                          backref=backref('drops'),
-    )
-
-    def __init__(self, **kwargs):
-        super(DropAssociation, self).__init__(**kwargs)
-
-    def __repr__(self):
-        return '{} from {} in {}'.format(self.drop, self.enemy, self.battle)
 
 def check_exists(equipment_id, level, rarity):
     with session_scope() as session:
@@ -1539,22 +77,6 @@ def get_load_data(data, filepath):
         with open(filepath) as infile:
             data = json.load(infile)
     return data
-
-def import_dammitdame(filepath):
-    logging.debug('{}(filepath="{}") start'.format(
-        sys._getframe().f_code.co_name, filepath))
-    with session_scope() as session:
-        pass
-    logging.debug('{}(filepath="{}") end'.format(
-        sys._getframe().f_code.co_name, filepath))
-
-def import_equipmentbuilder(filepath):
-    logging.debug('{}(filepath="{}") start'.format(
-        sys._getframe().f_code.co_name, filepath))
-    with session_scope() as session:
-        pass
-    logging.debug('{}(filepath="{}") end'.format(
-        sys._getframe().f_code.co_name, filepath))
 
 def import_battle_list(data=None, filepath=''):
     '''
@@ -1608,6 +130,7 @@ def import_world(data=None, filepath='', ask=False):
             new_log = Log(log='Create World({})'.format(new_world))
             session.add(new_log)
         for dungeon in data.get('dungeons', []):
+            captures = dungeon['captures']
             prizes = dungeon['prizes']
             new_dungeon = session.query(Dungeon).filter_by(
                 id=dungeon['id']).first()
@@ -1617,6 +140,29 @@ def import_world(data=None, filepath='', ask=False):
                 session.commit()
                 new_log = Log(log='Create Dungeon({})'.format(new_dungeon))
                 session.add(new_log)
+            # Added with 2015-06-07 patch
+            '''
+            for capture in captures:
+                # We want to create the Condition() when we import_world()
+                # However we do not want to overwrite or duplicate an old
+                # Condition()
+                # But we also want to have the Condition.code_name and
+                # Condition.condition_id
+                # NOTE 2015-06-07
+                # There is now a Condition.battle_specific_score_id
+                for specific in capture['sp_scores']:
+                    # So first get what is given
+                    battle_id = specific['battle_id']
+                    title = specific['title']
+                    old_battle = session.query(Battle).filter(
+                        Battle.id == battle_id).first()
+                    # But we actually are unable to associate the Condition()
+                    # if the Battle() does not exist yet.
+                    # It will not on the first run of import_world()
+                    if old_battle is None:
+                        continue
+                    # So I am commenting this feature out
+            '''
             for prize_type, prizes_list in prizes.items():
                 for prize in prizes_list:
                     id = prize['id']
@@ -1625,7 +171,6 @@ def import_world(data=None, filepath='', ask=False):
                         id=id).first()
                     if drop is None:
                         drop = Drop(id=id, name=name)
-                        # Is this automatically added to the session?
                     prize['prize_type'] = prize_type
                     old_prize = session.query(Prize).filter_by(
                         drop_id=id, prize_type=prize_type,
@@ -1670,13 +215,16 @@ def import_win_battle(data=None, filepath=''):
             logging.critical(
                 'We are missing a battle object for {}.'.format(battle_id))
             logging.critical('Skipping this import.')
-            # How the hell would this happen?
             return False
 
         score = data['result']['score']
         general = score['general']
         specific = score['specific']
         for s in general + specific:
+            # Changed with 2015-06-07 patch
+            # I just changed the title in the DB
+            if s['title'] == "Times KO'd":
+                s['title'] == "Characters KO'd"
             # Get the condition if it already exists
             old_condition = session.query(Condition).filter_by(
                 title=s['title'], condition_id=s['id'], code_name=s['code_name']
@@ -1706,11 +254,7 @@ def import_battle(data=None, filepath=''):
     '''
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
-    if data is None or not isinstance(data, dict):
-        if not filepath:
-            raise ValueError('One kwarg of data or filepath is required.')
-        with open(filepath) as infile:
-            data = json.load(infile)
+    data = get_load_data(data, filepath)
 
     success = False
     with session_scope() as session:
@@ -1833,7 +377,7 @@ def import_battle(data=None, filepath=''):
                             session.add(new_log)
                         session.commit()
                         # TODO 2015-05-10
-                        # Improve this nesting indentation
+                        # Improve this nesting indentation.
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
@@ -1845,11 +389,7 @@ def import_party(data=None, filepath=''):
     '''
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
-    if data is None or not isinstance(data, dict):
-        if not filepath:
-            raise ValueError('One kwarg of data or filepath is required.')
-        with open(filepath) as infile:
-            data = json.load(infile)
+    data = get_load_data(data, filepath)
 
     success = False
     with session_scope() as session:
@@ -1875,7 +415,6 @@ def import_party(data=None, filepath=''):
 
         buddies = data['buddies']
         for c in buddies:
-            # Check if the Character() exists
             old_character = session.query(Character).filter(
                 Character.buddy_id == c['buddy_id'],
                 Character.level == c['level']).first()
@@ -1924,11 +463,7 @@ def import_party(data=None, filepath=''):
 def import_dff(data=None, filepath=''):
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
-    if data is None or not isinstance(data, dict):
-        if not filepath:
-            raise ValueError('One kwarg of data or filepath is required.')
-        with open(filepath) as infile:
-            data = json.load(infile)
+    data = get_load_data(data, filepath)
 
     # This is the series we are currently in
     #series_id = data.get('dungeon_session', {})\
@@ -1966,8 +501,9 @@ def import_dff(data=None, filepath=''):
                     logging.critical('Skipping this import.')
                     okay = False
                     break
-                keys = ('acc', 'atk', 'def', 'eva', 'matk', 'mdef', 'mnd')
+                keys = ('acc', 'hp', 'atk', 'def', 'eva', 'matk', 'mdef', 'mnd')
                 # no 'hp', 'spd' as of 2015-06-03
+                # no 'spd' as of 2015-06-03
                 # Remove the stats from both the Character() base and series
                 for k in keys:
                     c[k] -= equipment[k]
@@ -1995,11 +531,7 @@ def import_recipes(data=None, filepath=''):
     /dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
     '''
-    if data is None or not isinstance(data, dict):
-        if not filepath:
-            raise ValueError('One kwarg of data or filepath is required.')
-        with open(filepath) as infile:
-            data = json.load(infile)
+    data = get_load_data(data, filepath)
 
     success = False
     with session_scope() as session:
@@ -2037,34 +569,6 @@ def import_recipes(data=None, filepath=''):
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
-    return success
-
-def import_ability_upgrade(data=None, filepath=''):
-    '''
-    /dff/ability/upgrade
-    '''
-    if data is None or not isinstance(data, dict):
-        if not filepath:
-            raise ValueError('One kwarg of data or filepath is required.')
-        with open(filepath) as infile:
-            data = json.load(infile)
-
-    success = False
-    with session_scope() as session:
-        a = data['upgraded_ability']
-        old_ability = session.query(Ability).filter_by(
-            ability_id=a['ability_id'], grade=a['grade']).first()
-        if old_ability is None:
-            logging.error('How are we upgrading an ability that we do not have in our database?')
-        elif old_ability.required_gil == 32767 and\
-        old_ability.required_gil < a['required_gil']:
-            old_ability.required_gil = a['required_gil']
-            new_log = Log(log='Update Ability({}).required_gil'.format(
-                old_ability)
-            )
-            session.add(new_log)
-            session.commit()
-        success = True
     return success
 
 def import_enhance_evolve(data=None, filepath=''):
@@ -2118,52 +622,6 @@ def import_grow(data=None, filepath=''):
     return success
 
 
-# Commented out because recordpeeker.handle_party_list() is superior.
-'''
-WEAPON_CATEGORIES = (
-    'Axe',
-    'Ball',
-    'Book',
-    'Bow',
-    'Dagger',
-    'Fist',
-    'Hammer',
-    'Instrument',
-    'Katana',
-    'Rod',
-    'Spear',
-    'Staff',
-    'Sword',
-    'Thrown',
-    'Whip',
-)
-
-def rank_relics(order_by='atk', equipment_type=WEAPON,
-                categories=WEAPON_CATEGORIES, realm=None, count=1):
-    if isinstance(realm, int) and realm < 100001:
-        realm = 100001 + int(realm) * 1000
-    outlist = {}
-    with session_scope() as session:
-        base_query = session.query(Relic)
-        ordered_queries = [base_query.order_by(desc(order_by))]
-        if realm is not None:
-            ordered_queries.append(base_query.order_by(
-                desc('series_' + order_by)).filter_by(series_id=realm))
-        for c in categories:
-            for o in ordered_queries:
-                subquery = o.filter_by(category_name=c).subquery()
-                results = session.query().add_entity(
-                    Relic, alias=subquery).group_by(
-                        'equipment_id').limit(count).all()
-                for r in results:
-                    if c not in outlist:
-                        outlist[c] = [r]
-                        continue
-                    outlist[c].append(r)
-        session.expunge_all()
-    return outlist
-'''
-
 def get_by_name(name, all=False):
     if name.lower() == 'about':
         return About()
@@ -2200,6 +658,7 @@ def get_by_id(id, all=False, enemy=False):
             (Battle, Battle.id, ('id', )),
             (Enemy, Enemy.param_id, ('lv', )),
             (Character, Character.buddy_id, ('level', )),
+            (Quest, Quest.id, ('id', )),
         ):
             q = session.query(m)
             q = q.filter(c == id)

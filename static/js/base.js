@@ -98,14 +98,14 @@ function calculate_atk(hp, def, physical) {
 function calculate_damage(atk, def, physical, boost) {
     var damage = 0;
     var tmp = 0;
+    if (boost)
+        atk = atk * 1.25;
     if (physical) {
         tmp = Math.pow(atk, 1.3);
         if (tmp > 2000)
             damage = 2000 * Math.pow(atk, 0.5) / Math.pow(def, 0.5);
         else
             damage = Math.pow(atk, 1.8) / Math.pow(def, 0.5);
-        if (boost)
-            damage *= 1.5;
         return Math.floor(damage);
     }
     tmp = Math.pow(atk, 1.15);
@@ -113,8 +113,6 @@ function calculate_damage(atk, def, physical, boost) {
         damage = 2000 * Math.pow(atk, 0.5) / Math.pow(def, 0.5);
     else
         damage = Math.pow(atk, 1.65) / Math.pow(def, 0.5);
-    if (boost)
-        damage *= 1.5;
     return Math.floor(damage);
 }
 
