@@ -376,8 +376,15 @@ def get_json():
             q = q.filter(t.in_(sq))
         elif 'enemy' in c:
             # We want to ensure that the "main" param_id is returned
-            q = q.filter(models.Enemy.name != '')
-            pass
+            #q = q.filter(models.Enemy.name != '')
+            # This fails for "Sinspawn Gui" (4100101)
+
+            # This fails for "Angler Whelk" (4060291)
+            t = tuple_(models.Enemy.enemy_id, models.Enemy.param_id)
+            sq = session.query(models.Enemy.enemy_id,
+                               func.min(models.Enemy.param_id))\
+                        .group_by(models.Enemy.enemy_id)
+            q = q.filter(t.in_(sq))
         q = q.all()
         if q:
             return minify_json([i.dict() for i in q])
