@@ -72,6 +72,11 @@
               <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">dungeons<span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 <li><a href="{{ url('home') }}?category=worlds">World & Event listing</a></li>
+                {% for c in ('enemies', 'quests') %}
+                <li>
+                  <a href="{{ url('home') }}?category={{ c }}" class="text-capitalize">{{ c }}</a>
+                </li>
+                {% endfor %}
                 <li class="divider"></li>
                 {% for date in get_content_dates() %}
                 {% if loop.first %}
@@ -86,11 +91,6 @@
                 {% endfor %}
               </ul>
             </li>
-            {% for c in ('enemies', ) %}
-            <li>
-              <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
-            </li>
-            {% endfor %}
             <li class="dropdown">
               <a href="#" class="text-uppercase dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Extra<span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
