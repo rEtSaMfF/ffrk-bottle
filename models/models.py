@@ -138,6 +138,14 @@ def import_world(data=None, filepath='', ask=False):
                 new_log = Log(log='Create Dungeon({})'.format(new_dungeon))
                 session.add(new_log)
             # Added with 2015-06-07 patch
+            if new_dungeon.total_stamina == 0:
+                new_dungeon.total_stamina = dungeon.get('total_stamina', 0)
+                new_log = Log(
+                    log='{}({}).total_stamina changed from 0 to {}'.format(
+                        type(new_dungeon).__name__, new_dungeon,
+                        new_dungeon.total_stamina
+                    )
+                )
             '''
             for capture in captures:
                 # We want to create the Condition() when we import_world()

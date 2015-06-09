@@ -192,7 +192,6 @@ class Dungeon(BetterBase):
 
             # Added with 2015-06-07 patch
             'captures',  # conditions
-            'total_stamina',
             'button_style',
         ):
             if i in kwargs:

@@ -186,7 +186,7 @@ def dungeons():
         ('type', 'Type'),
         ('conditions',
          'Conditions <span data-container="body" data-toggle="tooltip" title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
-        ('stamina', 'Stamina'),
+        ('total_stamina', 'Stamina'),
         ('shards',
          'Shards <span data-container="body" data-toggle="tooltip" title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
         ('prizes', 'Rewards'),
@@ -237,13 +237,11 @@ def json_dungeons():
                 prizes.append(str(prize))
         row['shards'] = shards
         row['prizes'] = '<br>'.join(prizes)
-        row['stamina'] = 0
         # This is repeated three times
         conditions = []
         conditions_present = False
         all_conditions_present = True
         for battle in dungeon.battles:
-            row['stamina'] += battle.stamina
             if not battle.conditions:
                 all_conditions_present = False
             for c in battle.conditions:
@@ -257,8 +255,6 @@ def json_dungeons():
         elif not all_conditions_present:
             conditions.append(
                 'We are missing some conditions for this dungeon.')
-        if row['stamina'] == 0:
-            row['stamina'] = 'Unknown'
         row['conditions'] = '<br>'.join(conditions)
         outlist.append(row)
 
