@@ -60,13 +60,6 @@ class About(object):
 ### END CLASS DEFINITIONS ###
 
 
-def check_exists(equipment_id, level, rarity):
-    with session_scope() as session:
-        q = session.query(Relic).filter_by(equipment_id=equipment_id,
-                                           level=level, rarity=rarity)
-        r = session.query(q.exists()).scalar()
-    return r
-
 def get_load_data(data, filepath):
     if data is None or not isinstance(data, dict):
         if not filepath:
@@ -141,11 +134,13 @@ def import_world(data=None, filepath='', ask=False):
             if new_dungeon.total_stamina == 0:
                 new_dungeon.total_stamina = dungeon.get('total_stamina', 0)
                 new_log = Log(
-                    log='{}({}).total_stamina changed from 0 to {}'.format(
+                    log='Update {}({}).total_stamina from 0 to {}'.format(
                         type(new_dungeon).__name__, new_dungeon,
                         new_dungeon.total_stamina
                     )
                 )
+                session.add(new_log)
+                session.commit()
             '''
             for capture in captures:
                 # We want to create the Condition() when we import_world()
@@ -192,6 +187,7 @@ def import_world(data=None, filepath='', ask=False):
                         log='Create Prize({}) from Dungeon({})'.format(
                             new_prize, new_dungeon))
                     session.add(new_log)
+                    session.commit()
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
@@ -388,6 +384,90 @@ def import_battle(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+def create_fix_relic(e):
+    success = False
+    with session_scope() as session:
+        new_relic = session.query(Relic).filter(
+            Relic.equipment_id == e['equipment_id'],
+            Relic.level == e['level'],
+            Relic.rarity == e['rarity']
+        ).first()
+        if new_relic is None:
+            new_relic = Relic(**e)
+            new_log = Log(log='Create Relic({})'.format(new_relic))
+            session.add_all((new_relic, new_log))
+            session.commit()
+        if new_relic.critical != e['critical']:
+            new_relic.critical = e['critical']
+            new_log = Log(log='Update {}({}).critical from 0 to {}'.format(
+                type(new_relic).__name__, new_relic, new_relic.critical))
+            session.add(new_log)
+            session.commit()
+        success = True
+    return success
+
+def create_fix_character(c):
+    success = False
+    with session_scope() as session:
+        new_character = session.query(Character).filter(
+            Character.buddy_id == c['buddy_id'],
+            Character.level == c['level']).first()
+        if new_character is None:
+            new_character = Character(**c)
+            new_log = Log(log='Create {}({})'.format(
+                type(new_character).__name__, new_character))
+            session.add_all((new_character, new_log))
+            session.commit()
+        # Compare and update stats for balance patches.
+        c['defense'] = c['def']
+        for k in new_character.columns:
+            if k in ('description', 'name', 'image_path', 'id'):
+                continue
+            old_value = new_character.__getattribute__(k)
+            if old_value != c[k]:
+                new_character.__setattr__(k, c[k])
+                new_log = Log(log='Update {}({}).{} from {} to {}'.format(
+                    type(new_character).__name__, new_character,
+                    k, old_value, new_character.__getattribute__(k))
+                )
+                session.add(new_log)
+                session.commit()
+        # Add what types of Relic and Ability this Character may use.
+        # Ideally this would only run once per balance patch.
+        for i, ec in c['equipment_category'].items():
+            ce = session.query(CharacterEquip).filter(
+                CharacterEquip.category_id == ec['category_id'],
+                CharacterEquip.equipment_type == ec['equipment_type'],
+                CharacterEquip.buddy_id == new_character.buddy_id).first()
+            if ce is not None:
+                continue
+            ec['buddy_id'] = new_character.buddy_id
+            ce = CharacterEquip(**ec)
+            new_log = Log(
+                log='Add {}({}) to {}({})'.format(
+                    type(ce).__name__, ce,
+                    type(new_character).__name__, new_character
+                )
+            )
+            session.add_all((ce, new_log))
+            session.commit()
+        for i, ac in c['ability_category'].items():
+            ca = session.query(CharacterAbility).filter(
+                CharacterAbility.category_id == ac['category_id'],
+                CharacterAbility.buddy_id == new_character.buddy_id).first()
+            if ca is not None:
+                continue
+            ac['buddy_id'] = new_character.buddy_id
+            ca = CharacterAbility(**ac)
+            new_log = Log(
+                log='Add {}({}) to {}({})'.format(
+                    type(ca).__name__, ca,
+                    type(new_character).__name__, new_character))
+            session.add_all((ca, new_log))
+            session.commit()
+        success = True
+    return success
+
 def import_party(data=None, filepath=''):
     '''
     /dff/party/list
@@ -400,13 +480,7 @@ def import_party(data=None, filepath=''):
     with session_scope() as session:
         equipments = data['equipments']
         for e in equipments:
-            if check_exists(e.get('equipment_id'),
-                            e.get('level'), e.get('rarity')):
-                continue
-            new_relic = Relic(**e)
-            new_log = Log(log='Create Relic({})'.format(new_relic))
-            session.add_all((new_relic, new_log))
-            session.commit()
+            create_fix_relic(e)
 
         materials = data['materials']
         for m in materials:
@@ -420,116 +494,20 @@ def import_party(data=None, filepath=''):
 
         buddies = data['buddies']
         for c in buddies:
-            old_character = session.query(Character).filter(
-                Character.buddy_id == c['buddy_id'],
-                Character.level == c['level']).first()
-            if old_character is not None:
-                for i, ec in c['equipment_category'].items():
-                    ce = session.query(CharacterEquip).filter(
-                        CharacterEquip.category_id == ec['category_id'],
-                        CharacterEquip.equipment_type == ec['equipment_type'],
-                        CharacterEquip.buddy_id == old_character.buddy_id)\
-                                                      .first()
-                    if ce is not None:
-                        continue
-                    ec['buddy_id'] = old_character.buddy_id
-                    ce = CharacterEquip(**ec)
-                    new_log = Log(
-                        log='Add {}({}) to {}({})'.format(
-                            type(ce).__name__, ce,
-                            type(old_character).__name__, old_character))
-                    session.add_all((ce, new_log))
-                for i, ac in c['ability_category'].items():
-                    ca = session.query(CharacterAbility).filter(
-                        CharacterAbility.category_id == ac['category_id'],
-                        CharacterAbility.buddy_id == old_character.buddy_id)\
-                                                        .first()
-                    if ca is not None:
-                        continue
-                    ac['buddy_id'] = old_character.buddy_id
-                    ca = CharacterAbility(**ac)
-                    new_log = Log(
-                        log='Add {}({}) to {}({})'.format(
-                            type(ca).__name__, ca,
-                            type(old_character).__name__, old_character))
-                    session.add_all((ca, new_log))
-                session.commit()
-                continue
-            new_character = Character(**c)
-            new_log = Log(log='Create {}({})'.format(
-                type(new_character).__name__, new_character))
-            session.add_all((new_character, new_log))
-            session.commit()
+            create_fix_character(c)
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
     return success
 
 def import_dff(data=None, filepath=''):
-    logging.debug('{}(filepath="{}") start'.format(
-        sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
 
-    # This is the series we are currently in
-    #series_id = data.get('dungeon_session', {})\
-    #                .get('party_status', {}).get('series_id', -1)
-    # Which we do not need
+    data['equipments'] = []
+    data['materials'] = []
+    data['buddies'] = data['buddy']
 
-    # This is a dict representing our current party
-    party = data.get('party', {}).get('slot_to_buddy_id', {})
-    success = False
-    with session_scope() as session:
-        equipments = data['equipment']
-        for c in data.get('buddy', ()):
-            old_character = session.query(Character).filter(
-                Character.buddy_id == c['buddy_id'],
-                Character.level == c['level']).first()
-            if old_character is not None:
-                continue
-            okay = True
-            # Check if the Character() is not in our party
-            #if c['id'] not in party.values():
-            #    continue
-            # If we are doing import_party on dff we have to do equipments
-            for e_id in ('accessory_id', 'armor_id', 'weapon_id'):
-                e_id = c.get(e_id)
-                # Skip if we do not have anything equipped
-                if e_id == 0:
-                    continue
-                # Get the equipment
-                for equipment in equipments:
-                    if equipment.get('id') == e_id:
-                        break
-                if equipment.get('id') != e_id:
-                    logging.critical(
-                        'Equipment with id={} not found.'.format(e_id))
-                    logging.critical('Skipping this import.')
-                    okay = False
-                    break
-                keys = ('acc', 'hp', 'atk', 'def', 'eva', 'matk', 'mdef', 'mnd')
-                # no 'hp', 'spd' as of 2015-06-03
-                # no 'spd' as of 2015-06-03
-                # Remove the stats from both the Character() base and series
-                for k in keys:
-                    c[k] -= equipment[k]
-                    # We only need to compare if the equipment series
-                    # matches the character series.
-                    # The game client calculates both based on dungeon series.
-                    if equipment['series_id'] == c['series_id']:
-                        c['series_{}'.format(k)]\
-                            -= equipment['series_{}'.format(k)]
-                    else:
-                        c['series_{}'.format(k)] -= equipment[k]
-            if okay:
-                new_character = Character(**c)
-                new_log = Log(log='Create {}({})'.format(
-                    type(new_character).__name__, new_character))
-                session.add_all((new_character, new_log))
-                session.commit()
-        success = True
-    logging.debug('{}(filepath="{}") end'.format(
-        sys._getframe().f_code.co_name, filepath))
-    return success
+    return import_party(data, filepath)
 
 def import_recipes(data=None, filepath=''):
     '''
@@ -587,18 +565,11 @@ def import_enhance_evolve(data=None, filepath=''):
         with open(filepath) as infile:
             data = json.load(infile)
 
-    success = False
-    with session_scope() as session:
-        for e in (data['old_src_user_equipment'],
-                  data['new_src_user_equipment'],):
-            if check_exists(e.get('equipment_id'),
-                            e.get('level'), e.get('rarity')):
-                continue
-            new_relic = Relic(**e)
-            new_log = Log(log='Create Relic({})'.format(new_relic))
-            session.add_all((new_relic, new_log))
-            session.commit()
-        success = True
+    success = True
+    for e in (data['old_src_user_equipment'],
+              data['new_src_user_equipment'],):
+        if not create_fix_relic(e):
+            success = False
     return success
 
 def import_grow(data=None, filepath=''):

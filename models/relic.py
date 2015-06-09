@@ -194,4 +194,15 @@ tes may vary.',
         return ret
 
 
+def find_missing_stats():
+    '''
+    # TODO 2015-06-09
+    Return an iterable of Relic objects where a stat appears to be missing.
+    '''
+    relics = []
+    with session_scope() as session:
+        q = session.query(Relic)
+        session.expunge_all()
+    return relics
+
 ### EOF ###
