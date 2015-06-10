@@ -5,10 +5,15 @@ import logging
 
 from contextlib import contextmanager
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, or_
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 
 from .base import BetterBase, session_scope
+
+
+# TODO 2015-06-09
+# Refactor Character and implement CharacterStat
+# Include CharacterStat.last_updated
 
 
 CATEGORY_ID = {
@@ -78,6 +83,7 @@ for k, v in CATEGORY_ID.items():
     if ABILITY_ID_NAME.get(v) == k:
         continue
     EQUIP_ID_NAME[v] = k
+    EQUIP_ID_NAME[str(v)] = k
 
 WEAPON = 1
 ARMOR = 2
@@ -111,6 +117,7 @@ class CharacterEquip(BetterBase):
             )
         )
 
+
 class CharacterAbility(BetterBase):
     __tablename__ = 'character_ability'
     category_id = Column(TINYINT, primary_key=True, autoincrement=False)
@@ -133,6 +140,7 @@ class CharacterAbility(BetterBase):
                 'Unknown AbilityCategory[{}]'.format(self.category_id)
             )
         )
+
 
 class Character(BetterBase):
     __tablename__ = 'character'
@@ -259,10 +267,6 @@ class Character(BetterBase):
         self.image_path = kwargs['image_path'].replace('/dff', '')
 
         for i in (
-            'def',
-            'description',
-            'name',
-
             'id',
             'ability_1_id',
             'ability_2_id',
@@ -273,16 +277,23 @@ class Character(BetterBase):
             'exp',
             'row',
             'soul_strike_id',
-            'image_path',
 
             'default_soul_strike_id',
             'ability_category',
             'equipment_category',
             'level_max',
 
-            # Added 2015-06-07
+            'def',
+            'description',
+            'name',
+            'image_path',
+
+            # Added with 2015-06-07 patch
             'record_materia_1_id',
             'record_materia_step',
+            'series_level',
+            'can_equip_record_materia_num',
+            'evolution_num',
         ):
             if i in kwargs:
                 del(kwargs[i])
@@ -290,6 +301,26 @@ class Character(BetterBase):
 
     def __repr__(self):
         return '{} ({})'.format(self.name, self.level)
+
+
+def find_negative_stats():
+    '''
+    Return an iterable of Character objects with a negative stat.
+    '''
+    characters = []
+    with session_scope() as session:
+        q = session.query(Character)
+        # Is there a better way to get a list of attributes?
+        columns = (Character.hp, Character.atk, Character.defense,
+                   Character.acc, Character.eva, Character.matk,
+                   Character.mdef, Character.mnd, Character.spd
+        )
+        filters = (c <= 0 for c in columns)
+        # https://stackoverflow.com/questions/7942547/using-or-in-sqlalchemy
+        q = q.filter(or_(*filters))
+        characters = q.all()
+        session.expunge_all()
+    return characters
 
 
 ### EOF ###
