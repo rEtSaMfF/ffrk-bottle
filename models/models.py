@@ -247,15 +247,15 @@ def import_win_battle(data=None, filepath=''):
                 # Make a new condition if it does not exist yet
                 old_condition = Condition(**s)
                 session.add(old_condition)
+                new_log = Log(
+                    log='Create Condition({})'.format(old_condition))
+                session.add(new_log)
                 #new_condition = SpecificCondition(
                 #    battle_id=battle_id,
                 #    dungeon_id=battle.dungeon_id,
                 #    title=s['title'])
-                session.add(new_condition)
-                session.commit()
-                new_log = Log(
-                    log='Create Condition({})'.format(old_condition))
-                session.add(new_log)
+                #session.add(new_condition)
+                #session.commit()
             if old_condition not in battle.conditions:
                 battle.conditions.append(old_condition)
                 new_log = Log(log='Add Condition({}) to Battle({})'.format(
