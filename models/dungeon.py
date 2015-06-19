@@ -10,6 +10,7 @@ from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 from sqlalchemy.orm import relationship, subqueryload, load_only
 
 from .base import BetterBase, session_scope
+from .condition import SpecificCondition
 from .world import World
 
 
@@ -50,6 +51,43 @@ class Dungeon(BetterBase):
         ('dungeon_type', 'Dungeon Type'),
     )
 
+    @property
+    def specific_conditions(self):
+        '''
+        Return an iterable of the conditions in this dungeon.
+        '''
+        # Old code from ffrkapp.py
+        '''
+        conditions = {}
+        conditions_present = False
+        all_conditions_present = True
+        for battle in dungeon.battles:
+            #battle_conditions = battle.conditions
+            battle_conditions = battle.specific_conditions
+            if not battle_conditions:
+                all_conditions_present = False
+            for c in battle_conditions:
+                conditions_present = True
+                # Filter out the standard conditions
+                try:
+                    if c.condition_id not in (1001, 1002, 1004):
+                        conditions.append(str(c))
+                except AttributeError:
+                    conditions.append(str(c))
+        if not conditions_present:
+            conditions.append(
+                'We have not imported any conditions for this dungeon.')
+        elif not all_conditions_present:
+            conditions.append(
+                'We are missing some conditions for this dungeon.')
+        '''
+        conditions = ()
+        with session_scope() as session:
+            conditions = session.query(SpecificCondition).filter(
+                SpecificCondition.dungeon_id == self.id).all()
+            session.expunge_all()
+        return conditions
+
     def generate_main_panels(self):
         main_stats = []
         for k, v in self.frontend_columns:
@@ -82,10 +120,6 @@ class Dungeon(BetterBase):
                 }
             )
         battles = []
-        # This is repeated three times
-        conditions = []
-        conditions_count = 0
-        all_conditions_present = True
         # TODO 2015-05-18
         # Put battles in tabs
         for battle in self.battles:
@@ -95,22 +129,11 @@ class Dungeon(BetterBase):
             if battle.has_boss:
                 item = '<strong>{}</strong>'.format(item)
             battles.append(item)
-            if not battle.conditions:
-                all_conditions_present = False
-            for c in battle.conditions:
-                conditions_count += 1
-                # Filter out the standard conditions
-                if c.condition_id not in (1001, 1002, 1004):
-                    conditions.append(str(c))
 
+        conditions = self.specific_conditions
+        conditions_count = 3 * len(battles) + len(conditions)
         conditions_body = None
-        if conditions_count == 0:
-            conditions_body = 'We have not imported any conditions for this dungeon.'
-            # Set this so that the 'footer' will be populated correctly
-            all_conditions_present = False
-        elif not all_conditions_present:
-            conditions_body = 'We are missing some conditions for this dungeon.'
-        elif not conditions:
+        if not conditions:
             conditions_body = 'There are no specific conditions for this dungeon.'
 
         self._main_panels.append(
@@ -118,7 +141,7 @@ class Dungeon(BetterBase):
                 'title': 'Specific Conditions',
                 'body': conditions_body,
                 'items': conditions,
-                'footer': 'You may lose a max of {} medals and still achieve mastery for this dungeon.'.format(conditions_count//2) if all_conditions_present else '',
+                'footer': 'You may lose a max of {} medals and still achieve mastery for this dungeon.'.format(conditions_count//2) if battles else '',
             }
         )
 

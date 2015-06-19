@@ -237,25 +237,8 @@ def json_dungeons():
                 prizes.append(str(prize))
         row['shards'] = shards
         row['prizes'] = '<br>'.join(prizes)
-        # This is repeated three times
-        conditions = []
-        conditions_present = False
-        all_conditions_present = True
-        for battle in dungeon.battles:
-            if not battle.conditions:
-                all_conditions_present = False
-            for c in battle.conditions:
-                conditions_present = True
-                # Filter out the standard conditions
-                if c.condition_id not in (1001, 1002, 1004):
-                    conditions.append(str(c))
-        if not conditions_present:
-            conditions.append(
-                'We have not imported any conditions for this dungeon.')
-        elif not all_conditions_present:
-            conditions.append(
-                'We are missing some conditions for this dungeon.')
-        row['conditions'] = '<br>'.join(conditions)
+        conditions = dungeon.specific_conditions
+        row['conditions'] = '<br>'.join(str(c) for c in conditions)
         outlist.append(row)
 
     if outlist:

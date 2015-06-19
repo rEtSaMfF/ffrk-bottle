@@ -23,7 +23,7 @@ from .base import BetterBase, session_scope, create_session, default_encode,\
 from .ability import Ability, AbilityCost
 from .battle import Battle
 from .character import Character, CharacterEquip, CharacterAbility
-from .condition import Condition
+from .condition import Condition, SpecificCondition
 from .drop import Drop, DropAssociation
 from .dungeon import Dungeon, DUNGEON_TYPE, get_content_dates, get_dungeons
 from .enemy import Enemy, Attribute, AttributeAssociation
@@ -154,13 +154,24 @@ def import_world(data=None, filepath='', ask=False):
                     # So first get what is given
                     battle_id = specific['battle_id']
                     title = specific['title']
-                    old_battle = session.query(Battle).filter(
-                        Battle.id == battle_id).first()
+                    old_condition = session.query(SpecificCondition).filter(
+                        SpecificCondition.battle_id == battle_id,
+                        SpecificCondition.title == title).first()
+                    if old_condition is not None:
+                        continue
+                    new_condition = SpecificCondition(**specific)
+                    new_log = Log(log='Create {}({})'.format(
+                        type(new_condition).__name__,
+                        new_condition))
+                    session.add_all((new_condition, new_log))
+                    session.commit()
+                    #old_battle = session.query(Battle).filter(
+                    #    Battle.id == battle_id).first()
                     # But we actually are unable to associate the Condition()
                     # if the Battle() does not exist yet.
                     # It will not on the first run of import_world()
-                    if old_battle is None:
-                        continue
+                    #if old_battle is None:
+                    #    continue
                     # So I am commenting this feature out
             '''
             for prize_type, prizes_list in prizes.items():
@@ -234,6 +245,9 @@ def import_win_battle(data=None, filepath=''):
                 # Make a new condition if it does not exist yet
                 old_condition = Condition(**s)
                 session.add(old_condition)
+                new_condition = SpecificCondition(
+                    battle_id=battle_id, title=s['title'])
+                session.add(new_condition)
                 session.commit()
                 new_log = Log(
                     log='Create Condition({})'.format(old_condition))
@@ -266,7 +280,7 @@ def import_battle(data=None, filepath=''):
                 for e in enemy['children']:
                     new_drops = []
                     for drop in e['drop_item_list']:
-                        # Get/Create Enemy()
+                        # Get/Create Drop()
                         id = drop.get('item_id')
                         if id is not None:
                             new_drop = session.query(Drop).filter_by(
@@ -285,6 +299,8 @@ def import_battle(data=None, filepath=''):
                     for p in params:
                         param_id = p['id']
                         lv = p['lv']
+                        # Ex bosses may have the same level as their Elite
+                        # but have different stats
                         new_enemy = session.query(Enemy).filter_by(
                             param_id=param_id,
                             lv=lv,
@@ -402,6 +418,12 @@ def create_fix_relic(e):
             new_log = Log(log='Update {}({}).critical from 0 to {}'.format(
                 type(new_relic).__name__, new_relic, new_relic.critical))
             session.add(new_log)
+            session.commit()
+        if not new_relic.image_path:
+            new_relic.image_path = e['image_path']
+            session.commit()
+        if not new_relic.detail_image_path:
+            new_relic.detail_image_path = e['detail_image_path']
             session.commit()
         success = True
     return success

@@ -30,6 +30,7 @@ class TestModels():
         assert self.session.query(models.Prize).first()
         assert self.session.query(models.Dungeon).first()
         assert self.session.query(models.Condition).first()
+        assert self.session.query(models.SpecificCondition).first()
         assert self.session.query(condition_table).first()
         assert self.session.query(enemy_table).first()
         assert self.session.query(models.Battle).first()

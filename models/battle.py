@@ -4,7 +4,8 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
 from sqlalchemy.orm import relationship
 
-from .base import BetterBase
+from .base import BetterBase, session_scope
+from .condition import SpecificCondition
 
 
 enemy_table = Table('enemy_table', BetterBase.metadata,
@@ -29,6 +30,15 @@ class Battle(BetterBase):
 
     # TODO 2015-05-19
     #messages = a many-to-many backref
+
+    @property
+    def specific_conditions(self):
+        conditions = ()
+        with session_scope() as session:
+            conditions = session.query(SpecificCondition).filter(
+                SpecificCondition.battle_id == self.id).all()
+            session.expunge_all()
+        return conditions
 
     def generate_main_panels(self):
         main_stats = []
@@ -59,18 +69,10 @@ class Battle(BetterBase):
                 }
             )
 
-        # This is repeated three times
-        conditions = []
-        conditions_count = 0
-        for c in self.conditions:
-            conditions_count += 1
-            # Filter out the standard conditions
-            if c.condition_id not in (1001, 1002, 1004):
-                conditions.append(str(c))
+        conditions = self.specific_conditions
+        conditions_count = 3 + len(conditions)
         conditions_body = None
-        if conditions_count == 0:
-            conditions_body = 'We have not imported any conditions for this battle.'
-        elif conditions_count == 3:
+        if conditions_count == 3:
             conditions_body = 'There are no specific conditions for this battle.\
 '
         self._main_panels.append(
