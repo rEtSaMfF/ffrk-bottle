@@ -141,7 +141,7 @@ def import_world(data=None, filepath='', ask=False):
                 )
                 session.add(new_log)
                 session.commit()
-            '''
+#            '''
             for capture in captures:
                 # We want to create the Condition() when we import_world()
                 # However we do not want to overwrite or duplicate an old
@@ -156,10 +156,12 @@ def import_world(data=None, filepath='', ask=False):
                     title = specific['title']
                     old_condition = session.query(SpecificCondition).filter(
                         SpecificCondition.battle_id == battle_id,
+                        SpecificCondition.dungeon_id == new_dungeon.id,
                         SpecificCondition.title == title).first()
                     if old_condition is not None:
                         continue
-                    new_condition = SpecificCondition(**specific)
+                    new_condition = SpecificCondition(
+                        dungeon_id=new_dungeon.id, **specific)
                     new_log = Log(log='Create {}({})'.format(
                         type(new_condition).__name__,
                         new_condition))
@@ -173,7 +175,7 @@ def import_world(data=None, filepath='', ask=False):
                     #if old_battle is None:
                     #    continue
                     # So I am commenting this feature out
-            '''
+#            '''
             for prize_type, prizes_list in prizes.items():
                 for prize in prizes_list:
                     id = prize['id']
@@ -245,8 +247,10 @@ def import_win_battle(data=None, filepath=''):
                 # Make a new condition if it does not exist yet
                 old_condition = Condition(**s)
                 session.add(old_condition)
-                new_condition = SpecificCondition(
-                    battle_id=battle_id, title=s['title'])
+                #new_condition = SpecificCondition(
+                #    battle_id=battle_id,
+                #    dungeon_id=battle.dungeon_id,
+                #    title=s['title'])
                 session.add(new_condition)
                 session.commit()
                 new_log = Log(
