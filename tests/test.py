@@ -85,6 +85,16 @@ class TestFFRKApp():
                             status=404)
         assert 'File does not exist.' in resp.text
 
+    def tables(self):
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'material'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'enemy'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'relic'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'ability'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'world'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'log'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'quest'))
+        assert self.app.get('{}/?category={}'.format(self.url('home'), 'character'))
+
     def test_main(self):
         # Ability
         bladeblitz = self.app.get(self.url('main', iden=30151051))

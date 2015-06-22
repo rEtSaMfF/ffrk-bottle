@@ -142,12 +142,14 @@ def home(category=None):
         (('ability', 'abilities'), models.Ability.frontend_columns),
         (('world', 'worlds', 'realm', 'realms'), models.World.frontend_columns),
         (('log', 'logs'), models.Log.frontend_columns),
-        (('character', 'characters'), models.Character.frontend_columns),
         (('quest', 'quests'), models.Quest.frontend_columns),
+        #(('character', 'characters'), models.Character.frontend_columns),
     ):
         if category in c:
             columns = cs
             break
+    if not columns:
+        abort(404, 'Unknown category "{}"'.format(category))
     context = {'rarity': rarity, 'category': category, 'columns': columns}
 
     try:
@@ -159,6 +161,20 @@ def home(category=None):
     # Do we need an abort here?
 
 
+@app.get('/character', name='character')
+@app.get('/characters', name='characters')
+@view('character.html')
+def character():
+    '''
+    Render a character comparison
+    '''
+    context = {
+        'o': models.Character,
+        'data_url': '{}?category=character'.format(app.get_url('json'))
+    }
+    return context
+
+
 @app.get('/calc', name='calc')
 @app.get('/calculator', name='calculator')
 @view('calc.html')
@@ -167,6 +183,7 @@ def calc():
     Render a damange calculator.
     '''
     return {}
+
 
 @app.get('/dungeon', name='dungeon')
 @app.get('/dungeons', name='dungeons')

@@ -56,7 +56,12 @@
 
         <div class="collapse navbar-collapse" id="navbar-collapse-1">
           <ul class="nav navbar-nav">
-            {% for c in ('characters', 'relics') %}
+            {% for c in ('characters', ) %}
+            <li>
+              <a href="{{ url(c) }}" class="text-uppercase">{{ c }}</a>
+            </li>
+            {% endfor %}
+            {% for c in ('relics', ) %}
             <li>
               <a href="{{ url('home') }}?category={{ c }}" class="text-uppercase">{{ c }}</a>
             </li>

@@ -540,6 +540,8 @@ def import_recipes(data=None, filepath=''):
     /dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
     '''
+    logging.debug('{}(filepath="{}") start'.format(
+        sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
 
     success = False
@@ -692,6 +694,7 @@ def get_name_by_id(id):
     obj2 = get_by_id(id)
     if obj2 is not None:
         return obj2.name
+
     return id
 
 

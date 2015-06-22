@@ -45,6 +45,9 @@ function get_key(obj, value) {
 }
 
 function super_formatter(value, row, index) {
+    if (value === undefined)
+        return '';
+
     if (value >= 1427328000)
         return '<abbr title="' + moment.tz(value, "X", "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
 
@@ -55,7 +58,7 @@ function super_formatter(value, row, index) {
         return '<a href="/' + row["search_id"] + '">' + value + '</a>';
 
     if (key == "image_path") {
-        ret = '<img src="' + value + '" alt="' + row["name"] + '" title="' + row["name"] + '" class="img-responsive center-block">';
+        ret = '<img src="' + value + '" alt="' + row["name"] + '" title="' + row["name"] + '" class="img-responsive center-block" style="height: 2em; width: 2em;">';
         if ("search_id" in row)
             ret = '<a href="/' + row["search_id"] + '">' + ret + '</a>';
         return ret;
@@ -73,6 +76,9 @@ function super_formatter(value, row, index) {
 
         return value + ' <a tabindex="0" class="btn btn-xs btn-default" role="button" data-toggle="popover" title="Physical" data-content="You need ' + atk + ' ATK in order to do ' + hp + ' damage."><span data-container="body" data-toggle="tooltip" title="You need ' + atk + ' ATK in order to do ' + hp + ' damage." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span></a> <a tabindex="0" class="btn btn-xs btn-default" role="button" data-toggle="popover" title="Magical" data-content="You need ' + mag + ' MAG/MND in order to do ' + hp + ' base damage."><span data-container="body" data-toggle="tooltip" title="You need ' + mag + ' MAG/MND in order to do ' + hp + ' base damage." class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></a>';
     }
+
+    if (!window.hasOwnProperty('current_realm'))
+        return value;
 
     return value;
 }

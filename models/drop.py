@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 
 from .base import BetterBase, session_scope
-#from .models import get_name_by_id
+from .log import Log
 
 
 class DropAssociation(BetterBase):
@@ -45,7 +45,9 @@ class Drop(BetterBase):
     # TODO 2015-06-07
     # Fix the circular import
     def populate_name(self):
-        if self.name is not None:
+        from .models import get_name_by_id
+
+        if self.name:
             return
 
         name = get_name_by_id(self.id)

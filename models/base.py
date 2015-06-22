@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import traceback
+import types
 
 import arrow
 
@@ -48,6 +49,10 @@ class BetterBase(object):
         '''
         return self.frontend_columns
 
+    main_tabs = []
+    # Will be an iterable of dicts representing different tabs on a category
+    # such as a comparison of models.Character
+
     @property
     def search_id(self):
         '''
@@ -75,6 +80,10 @@ class BetterBase(object):
     # objects similar to this object but differing slightly
     # (such as stats per level).
 
+    additional_columns = ()
+    # Will be an an iterable of tuples (key, attributes/properties)
+    # to add to the dict representation.
+
     def __repr__(self):
         return u'{}({})'.format(self.__class__.__name__, self.columns)
 
@@ -85,6 +94,8 @@ class BetterBase(object):
         ret = dict((c, getattr(self, c)) for c in self.columns)
         if self.search_id is not None:
             ret['search_id'] = self.search_id
+        for k, v in self.additional_columns:
+            ret[k] = v
         return ret
 
     def jsonify(self):
@@ -108,6 +119,10 @@ def default_encode(obj):
 
         #obj = obj.replace(tzinfo=None)
         #return (obj - arrow.arrow.datetime(1970, 1, 1)).total_seconds()
+    if isinstance(obj, BetterBase):
+        return obj.dict()
+    if isinstance(obj, types.GeneratorType):
+        return [i for i in obj]
     raise TypeError('{} is not JSON serializable'.format(obj))
 
 

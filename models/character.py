@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-import sys
+import json
 import logging
+import sys
 
 from contextlib import contextmanager
 
@@ -16,6 +17,8 @@ from .base import BetterBase, session_scope
 # Include CharacterStat.last_updated
 
 
+# TODO 2015-06-22
+# Get these from battle.js
 CATEGORY_ID = {
     'Dagger': 1,
     'Sword': 2,
@@ -31,6 +34,7 @@ CATEGORY_ID = {
     'Whip': 12,
     'Thrown': 13,
     'Book': 14,
+    'Gun': 15,
 
     'Ball': 30,
 
@@ -44,8 +48,8 @@ CATEGORY_ID = {
 
     'Accessory': 80,
 
-    'Weapon Upgrade': 98,
-    'Armor Upgrade': 99,
+    #'Weapon Upgrade': 98,
+    #'Armor Upgrade': 99,
 
     'Black Magic': 1,
     'White Magic': 2,
@@ -96,6 +100,8 @@ class CharacterEquip(BetterBase):
     equipment_type = Column(TINYINT, primary_key=True, autoincrement=False)
     buddy_id = Column(Integer, primary_key=True, autoincrement=False)
 
+    search_id = None
+
     def __init__(self, **kwargs):
         known_factor = '100'
         if kwargs['factor'] != known_factor:
@@ -117,12 +123,21 @@ class CharacterEquip(BetterBase):
             )
         )
 
+    def dict(self):
+        return {str(self):str(self)}
+
+    #def jsonify(self):
+        #return json.dumps({str(self):str(self)}, separators=(',',':'))
+        #return '{"' + str(self) + '":"' + str(self) + '"}'
+
 
 class CharacterAbility(BetterBase):
     __tablename__ = 'character_ability'
     category_id = Column(TINYINT, primary_key=True, autoincrement=False)
     rarity = Column(TINYINT, nullable=False)
     buddy_id = Column(Integer, primary_key=True, autoincrement=False)
+
+    search_id = None
 
     def __init__(self, **kwargs):
         for i in (
@@ -141,6 +156,27 @@ class CharacterAbility(BetterBase):
             )
         )
 
+    def dict(self):
+        return {
+            ABILITY_ID_NAME.get(self.category_id, self.category_id):
+            self.rarity
+        }
+
+    '''
+    def jsonify(self):
+        return json.dumps(
+            {
+                ABILITY_ID_NAME.get(
+                    self.category_id,
+                    'Unknown AbilityCategory[{}]'.format(self.category_id)):
+                self.rarity,
+            },
+            separators=(',',':'))
+        #return '{"' + ABILITY_ID_NAME.get(
+        #    self.category_id,
+        #    'Unknown AbilityCategory[{}]'.format(self.category_id)) +\
+        #    '":' + str(self.rarity) + '}'
+    '''
 
 class Character(BetterBase):
     __tablename__ = 'character'
@@ -199,6 +235,72 @@ class Character(BetterBase):
         ('series_matk', 'RS MAG'),
         ('series_mdef', 'RS RES'),
         ('series_mnd', 'RS MIND'),
+    )
+
+    @property
+    def additional_columns(self):
+        return (
+            ('Equipment', self.get_equips()),
+            ('Abilities', self.get_abilities()),
+            #('Equipment', [str(i) for i in self.get_equips()]),
+            #('Abilities', [str(i) for i in self.get_abilities()]),
+        )
+
+    main_tabs = (
+        {
+            'id': 'stats',
+            'title': 'Stats',
+            'columns': (
+                ('image_path', 'Image'),
+                ('name', 'Name'),
+                ('series_id', 'Series'),
+                ('level', 'Level'),
+                ('hp', 'HP'),
+                ('atk', 'ATK'),
+                ('defense', 'DEF'),
+                ('acc', 'ACC'),
+                ('eva', 'EVA'),
+                ('matk', 'MAG'),
+                ('mdef', 'RES'),
+                ('mnd', 'MIND'),
+                ('spd', 'SPD'),
+            )
+        },
+        {
+            'id': 'abilities',
+            'title': 'Abilities',
+            'columns': (
+                ('image_path', 'Image'),
+                ('name', 'Name'),
+                ('series_id', 'Series'),
+            ) +
+            #tuple((v, v) for k, v in sorted(ABILITY_ID_NAME.items()))
+            tuple((v, v) for k, v in ABILITY_ID_NAME.items())
+        },
+        {
+            'id': 'weapons',
+            'title': 'Weapons',
+            'columns': (
+                ('image_path', 'Image'),
+                ('name', 'Name'),
+                ('series_id', 'Series'),
+            ) +
+            #tuple((v, v) for k, v in sorted(EQUIP_ID_NAME.items()) if\
+            tuple((v, v) for k, v in EQUIP_ID_NAME.items() if\
+                  isinstance(k, int) and k < 50)
+        },
+        {
+            'id': 'armor',
+            'title': 'Armor',
+            'columns': (
+                ('image_path', 'Image'),
+                ('name', 'Name'),
+                ('series_id', 'Series'),
+            ) +
+            #tuple((v, v) for k, v in sorted(EQUIP_ID_NAME.items()) if\
+            tuple((v, v) for k, v in EQUIP_ID_NAME.items() if\
+                  isinstance(k, int) and k >= 50)
+        },
     )
 
     @property
