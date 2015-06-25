@@ -60,6 +60,20 @@ class About(object):
 ### END CLASS DEFINITIONS ###
 
 
+def get_realms():
+    '''
+    Get an iterable of 2-tuples (series_id, name) of Realms.
+    '''
+    r = ()
+    with session_scope() as session:
+        realms = session.query(World)\
+                        .options(load_only(World.series_id, World.name))\
+                        .filter(World.world_type == 1).all()
+        session.expunge_all()
+    r = [(w.series_id, w.name) for w in realms]
+    return [(200001, 'Core')] + sorted(r)
+
+
 def get_load_data(data, filepath):
     if data is None or not isinstance(data, dict):
         if not filepath:

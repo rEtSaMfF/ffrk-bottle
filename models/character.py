@@ -64,6 +64,7 @@ CATEGORY_ID = {
     'Knight': 11,
     'Samurai': 12,
     'Ninja': 13,
+    'Bard': 14,
 }
 
 ABILITY_ID_NAME = {

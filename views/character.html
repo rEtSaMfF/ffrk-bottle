@@ -1,31 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Character Comparison{% endblock title %}
+{% block title %}Characters{% endblock title %}
 
-{% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.css">{% endblock extra_head %}
+{% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.css">{% endblock extra_head %}
 
-{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.7.0/bootstrap-table.min.js"></script>
+{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.js"></script>
 {# Only the last table will have keyevents
 <script src="{{ url('static', filepath='js/bootstrap-table-keyevents.min.js') }}"></script>
 #}
 <script src="{{ url('static', filepath='js/bootstrap-table-mobile.min.js') }}"></script>{% endblock extra_body %}
 
+{% block info_alert %}Loading{% endblock info_alert %}
 
-{% block extra_javascript %}var data;
+{% block extra_javascript %}var data, current_realm, min_stats = {}, max_stats = {};
   $(document).ready(function () {
-    $.getJSON("{{ data_url }}", function (d) {
-      data = d;
-      for (var i = 0; i < data.length; i++) {
-        for (var j = 0; j < data[i]['Equipment'].length; j++)
-          $.extend(data[i], data[i]['Equipment'][j]);
-        for (var j = 0; j < data[i]['Abilities'].length; j++)
-          $.extend(data[i], data[i]['Abilities'][j]);
-        if (data[i]['job_name'] == data[i]['name'])
-          // Add a space just to make the value unique :(
-          data[i]['job_name'] += ' ';
-      }
-      $("#{{ o.main_tabs[0]['id'] }}-table").bootstrapTable("load", {data: data});
-    });
+    init_characters("{{ data_url }}", "{{ o.main_tabs[0]['id'] }}-table");
+    $("#getInfo").show();
     {% for tab in o.main_tabs %}
     $("#main-tabs a[href='#{{ tab['id'] }}']").on("shown.bs.tab", function (e) {
       $("#{{ tab['id'] }}-table").bootstrapTable("load", {data: data});
@@ -63,6 +53,14 @@
     {% else %}
     <div role="tabpanel" class="tab-pane" id="{{ tab['id'] }}">
     {% endif %}
+      <div id="{{ tab['id'] }}-toolbar" class="dropdown">
+        <button class="btn btn-default dropdown-toggle" type="button" id="{{ tab['id'] }}-dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">Change Realm <span class="caret"></span></button>
+        <ul class="dropdown-menu" aria-labelledby="{{ tab['id'] }}-dropdown">
+          {% for r in realms %}
+          <li><a href="#" onclick="change_realm({{ r[0] }}, '{{ tab['id'] }}-table')">{{ r[1] }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
       <table
         id="{{ tab['id'] }}-table"
         class="table-condensed table-striped"
@@ -78,12 +76,13 @@
         data-mobile-responsive="true"
         data-check-on-init="true"
         data-min-width="640"
-      >
+        data-toolbar="#{{ tab['id'] }}-toolbar"
+       >
         <thead>
           <tr>
             <th data-width="25" data-formatter="inspect_formatter"></th>
             {% for c in tab['columns'] %}
-            <th data-field="{{ c[0] }}" data-sortable="true" data-formatter="super_formatter">{{ c[1] }}</th>
+            <th data-field="{{ c[0] }}" data-sortable="true" data-sort-name="sort-{{ c[0] }}" data-cell-style="cell_styler" data-formatter="super_formatter">{{ c[1] }}</th>
             {% endfor %}
           </tr>
         </thead>

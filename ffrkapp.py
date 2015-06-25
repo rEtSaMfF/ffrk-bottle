@@ -170,7 +170,8 @@ def character():
     '''
     context = {
         'o': models.Character,
-        'data_url': '{}?category=character'.format(app.get_url('json'))
+        'data_url': '{}?category=character'.format(app.get_url('json')),
+        'realms': [(0, 'No RS')] + models.get_realms(),
     }
     return context
 
