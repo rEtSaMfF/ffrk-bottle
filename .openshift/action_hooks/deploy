@@ -6,23 +6,43 @@
 # ruby, etc.
 
 
-mkdir -p ${OPENSHIFT_DATA_DIR}post
+# Make some directories
+mkdir -p ${OPENSHIFT_DATA_DIR}/post
+mkdir -p ${OPENSHIFT_DATA_DIR}/logs
 
 for i in static/img static/lang static/ww; do
     # Ensure the directories exist
-    mkdir -p ${OPENSHIFT_DATA_DIR}${i}
-    # Then link the directories
-    ln -sfT ${OPENSHIFT_DATA_DIR}${i} ${OPENSHIFT_REPO_DIR}${i}
+    mkdir -p ${OPENSHIFT_DATA_DIR}/${i}
+    # Before linking them
+    ln -sfT ${OPENSHIFT_DATA_DIR}/${i} ${OPENSHIFT_REPO_DIR}/${i}
 done
 
-mkdir -p ${OPENSHIFT_REPO_DIR}wsgi
-ln -sft ${OPENSHIFT_REPO_DIR}wsgi ${OPENSHIFT_REPO_DIR}static
+mkdir -p ${OPENSHIFT_REPO_DIR}/wsgi
+ln -sft ${OPENSHIFT_REPO_DIR}/wsgi ${OPENSHIFT_REPO_DIR}/static
 
-#ln -sf ${OPENSHIFT_DATA_DIR}static/favicon.ico ${OPENSHIFT_REPO_DIR}static/favicon.ico
+#ln -sf ${OPENSHIFT_DATA_DIR}/static/favicon.ico ${OPENSHIFT_REPO_DIR}/static/favicon.ico
+
+
+# Minify some js/css
+if [ -x ${OPENSHIFT_DATA_DIR}/bin/yuicompressor-2.4.8.jar ] && which java 2>&1 > /dev/null; then
+    for INFILE in $(find "${OPENSHIFT_REPO_DIR}/static" -type l -iname "*.min.*"); do
+        REALFILE=$(readlink -f ${INFILE})
+        OUTFILE=${INFILE}.tmp
+        if java -jar ${OPENSHIFT_DATA_DIR}/bin/yuicompressor-2.4.8.jar -o ${OUTFILE} ${INFILE}; then
+            if [ $(stat -c%s ${OUTFILE}) -lt $(stat -c%s ${REALFILE}) ]; then
+                mv ${OUTFILE} ${INFILE}
+            fi
+        else
+            echo "Error occured while minifying ${INFILE}"
+        fi
+    done
+else
+    echo "Minifier not found"
+fi
 
 
 # Use repository htaccess if exists
-if [  -f ${OPENSHIFT_REPO_DIR}.openshift/config/.htaccess ]; then
+if [ -f ${OPENSHIFT_REPO_DIR}.openshift/config/.htaccess ]; then
   cp -f ${OPENSHIFT_REPO_DIR}.openshift/config/.htaccess ${OPENSHIFT_REPO_DIR}/.htaccess
 fi
 
