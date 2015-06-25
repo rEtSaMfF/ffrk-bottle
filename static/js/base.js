@@ -201,19 +201,19 @@ function cell_styler(value, row, index) {
 
 
 function super_formatter(value, row, index) {
-    if (value === undefined)
+    if (value === undefined || value === null)
         return '';
 
     if (value >= 1427328000)
         return '<abbr title="' + moment.tz(value, "X", "UTC").format("LLLL z") + '" data-livestamp="' + value + '"></abbr>';
 
     var key;
-    //var key = get_key(row, value);
-    //value = get_value(row, key, value);
     if (value.constructor === Object) {
         key = Object.keys(value)[0];
         value = value[key];
     }
+    else
+        key = get_key(row, value);
 
     // This fails for "Core" characters because "name" === "job_name"
     if ((key === "name" || key === "title") && "search_id" in row)
