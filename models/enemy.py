@@ -88,7 +88,7 @@ class AttributeAssociation(BetterBase):
 class Attribute(BetterBase):
     __tablename__ = 'attribute'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    attribute_id = Column(TINYINT(unsigned=True), nullable=False)
+    attribute_id = Column(SMALLINT, nullable=False)
     factor = Column(TINYINT, nullable=False)
     #name = Column(String(length=16))
 

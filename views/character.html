@@ -86,6 +86,14 @@
             {% endfor %}
           </tr>
         </thead>
+        <tfoot>
+          <tr>
+            <td></td>
+            {% for c in tab['columns'] %}
+            <td>{{ c[1] }}</td>
+            {% endfor %}
+          </tr>
+        </tfoot>
       </table>
     </div> <!-- /#{{ tab['id'] }} -->
     {% endfor %}

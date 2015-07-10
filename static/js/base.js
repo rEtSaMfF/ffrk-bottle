@@ -52,7 +52,6 @@ function init_characters(u, t) {
         if (!t.startsWith("#"))
             t = "#" + t;
         $(t).bootstrapTable("load", {data: data});
-
     })
         .success(function() {
             //$("#getSuccess").show();
