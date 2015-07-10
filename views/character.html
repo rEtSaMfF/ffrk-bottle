@@ -68,6 +68,7 @@
         data-cache="true"
         data-show-columns="true"
         data-pagination="true"
+        data-show-footer="true"
         data-page-size="256"
         data-page-list="[10, 25, 50, 100, All]"
         data-show-toggle="true"
@@ -82,18 +83,10 @@
           <tr>
             <th data-width="25" data-formatter="inspect_formatter"></th>
             {% for c in tab['columns'] %}
-            <th data-field="{{ c[0] }}" data-sortable="true" data-sort-name="sort-{{ c[0] }}" data-cell-style="cell_styler" data-formatter="super_formatter">{{ c[1] }}</th>
+            <th data-field="{{ c[0] }}" data-sortable="true" data-sort-name="sort-{{ c[0] }}" data-cell-style="cell_styler" data-formatter="super_formatter" data-footer-formatter=" {{ c[1] }}">{{ c[1] }}</th>
             {% endfor %}
           </tr>
         </thead>
-        <tfoot>
-          <tr>
-            <td></td>
-            {% for c in tab['columns'] %}
-            <td>{{ c[1] }}</td>
-            {% endfor %}
-          </tr>
-        </tfoot>
       </table>
     </div> <!-- /#{{ tab['id'] }} -->
     {% endfor %}
