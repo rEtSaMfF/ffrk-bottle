@@ -79,7 +79,7 @@ function change_realm(r, t) {
             if (!data[i][key].constructor === Number)
                 continue;
             if (get_value(data[i], "series_id") === current_realm)
-                data[i]["sort-"+key] = get_value(data[i], "series_"+key);
+                data[i]["sort-"+key] = get_value(data[i], "series_"+key) || get_value(data[i], key);
             else
                 data[i]["sort-"+key] = get_value(data[i], key);
         }
