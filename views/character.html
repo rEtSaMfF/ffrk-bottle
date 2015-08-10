@@ -83,7 +83,7 @@
           <tr>
             <th data-width="25" data-formatter="inspect_formatter"></th>
             {% for c in tab['columns'] %}
-            <th data-field="{{ c[0] }}" data-sortable="true" data-sort-name="sort-{{ c[0] }}" data-cell-style="cell_styler" data-formatter="super_formatter" data-footer-formatter=" {{ c[1] }}">{{ c[1] }}</th>
+            <th data-field="{{ c[0] }}" data-sortable="true" data-sort-name="sort-{{ c[0] }}" data-cell-style="cell_styler" data-formatter="super_formatter" data-footer-formatter=" {{ c[1] }}" style="white-space: nowrap;">{{ c[1] }}</th>
             {% endfor %}
           </tr>
         </thead>

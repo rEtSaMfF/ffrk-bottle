@@ -46,10 +46,10 @@ ATTRIBUTE_ID = {
     223: 'Curse',
     224: 'Slownumb',
     225: 'Blink',
-    #226: 'Water Imp',
-    #227: 'Vanish',
-    #228: 'Porky',
-    #229: 'Sap',
+    226: 'Water Imp',
+    227: 'Vanish',
+    228: 'Porky',
+    229: 'Sap',
 }
 
 FACTOR = {
