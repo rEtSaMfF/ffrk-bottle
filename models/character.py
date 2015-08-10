@@ -37,6 +37,9 @@ CATEGORY_ID = {
     'Gun': 15,
 
     'Ball': 30,
+    'Hairpin': 31,
+    #'Gunarm': ,
+    #'Card': ,
 
     'Shield': 50,
     'Hat': 51,
@@ -112,8 +115,12 @@ class CharacterEquip(BetterBase):
             logging.critical(
                 '{} has a non {} factor'.format(
                     type(self).__name__, known_factor))
+
+        self.category_id = int(kwargs['category_id'])
+
         for i in (
             'factor',
+            'category_id',
         ):
             if i in kwargs:
                 del(kwargs[i])
@@ -144,8 +151,11 @@ class CharacterAbility(BetterBase):
     search_id = None
 
     def __init__(self, **kwargs):
+        self.category_id = int(kwargs['category_id'])
+
         for i in (
             'name',
+            'category_id',
         ):
             if i in kwargs:
                 del(kwargs[i])

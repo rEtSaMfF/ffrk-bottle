@@ -496,6 +496,17 @@ def create_fix_character(c):
                 CharacterAbility.category_id == ac['category_id'],
                 CharacterAbility.buddy_id == new_character.buddy_id).first()
             if ca is not None:
+                if ca.rarity != int(ac['rarity']):
+                    old_rarity = ca.rarity
+                    ca.rarity = ac['rarity']
+                    new_log = Log(
+                        log='Update {} {}({}).rarity from {} to {}'.format(
+                            new_character.name,
+                            type(ca).__name__, ca,
+                            old_rarity, ca.rarity
+                        )
+                    )
+                    session.add(new_log)
                 continue
             ac['buddy_id'] = new_character.buddy_id
             ca = CharacterAbility(**ac)
@@ -626,18 +637,7 @@ def import_grow(data=None, filepath=''):
 
     c = data['buddy']
 
-    success = False
-    with session_scope() as session:
-        if not session.query(session.query(Character).filter(
-                Character.buddy_id == c['buddy_id'],
-                Character.level == c['level']).exists()).scalar():
-            new_character = Character(**c)
-            new_log = Log(log='Create {}({})'.format(
-                type(new_character).__name__, new_character))
-            session.add_all((new_character, new_log))
-            session.commit()
-        success = True
-    return success
+    return create_fix_character(c)
 
 
 def get_by_name(name, all=False):
