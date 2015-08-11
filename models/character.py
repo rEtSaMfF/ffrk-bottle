@@ -410,6 +410,13 @@ class Character(BetterBase):
             'series_level',
             'can_equip_record_materia_num',
             'evolution_num',
+
+            # Added with 2015-08-10 patch
+            'soul_strike_1_id',
+            'soul_strike_2_id',
+            'soul_strike_3_id',
+            'soul_strike_4_id',
+            'soul_strike_exp_map',
         ):
             if i in kwargs:
                 del(kwargs[i])

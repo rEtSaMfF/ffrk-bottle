@@ -140,6 +140,9 @@ class World(BetterBase):
             'image_path',
             'is_unlocked',
             'type',
+
+            # Added 2015-08-10
+            'series_formal_name',
         ):
             if i in kwargs:
                 del(kwargs[i])
