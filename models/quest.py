@@ -26,7 +26,7 @@ class Quest(BetterBase):
     achieve_type_name = Column(String(length=16), nullable=False)
 
     hint_title = Column(String(length=128), nullable=False)
-    hint_msg = Column(String(length=512), nullable=False)
+    hint_msg = Column(String(length=256), nullable=False)
 
     frontend_columns = (
         ('title', 'Title'),
@@ -51,7 +51,7 @@ class Quest(BetterBase):
 
     def __init__(self, **kwargs):
         self.description = kwargs['description'].encode(
-            sys.stdout.encoding, error='ignore')
+            sys.stdout.encoding, errors='ignore')
         for i in (
             'can_challenge',
             'disp_number',
@@ -69,6 +69,27 @@ class Quest(BetterBase):
             'ability_recipes',
 
             'description',
+
+            # Added 2015-08-10
+            'is_event',
+            'is_event_type_group',
+            'is_normal',
+            'is_real_type_group',
+            'is_steady_type_group',
+            'opened_at',
+            'closed_at',
+
+            # Added 2015-09-12
+            'achieve_cond_arg1',
+            'achieve_cond_arg2',
+            'achieve_cond_arg3',
+            'achieve_cond_arg4',
+            'achieve_cond_arg5',
+            'achieve_cond_arg6',
+            'achieve_cond_arg7',
+            'achieve_cond_arg8',
+            'achieve_cond_arg9',
+            'achieve_cond_arg10',
         ):
             if i in kwargs:
                 del(kwargs[i])

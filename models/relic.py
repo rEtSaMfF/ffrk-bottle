@@ -176,10 +176,18 @@ tes may vary.',
             'image_path',
             'detail_image_path',
 
-            # Added with 2015-06-07 patch
+            # Added 2015-06-07
             'is_accessory',
             'is_armor',
             'is_weapon',
+
+            # Added 2015-09-12
+            'series_hammering_num',
+            'is_hammering_item',
+            'hammering_affect_param_key',
+            'max_hammering_num',
+            'hammering_num',
+            'is_max_level',
         ):
             if i in kwargs:
                 del(kwargs[i])

@@ -12,6 +12,7 @@ var series_map = {
     110001: "FF X",
     112001: "FF XII",
     113001: "FF XIII",
+    114001: "FF XIV",
 };
 
 
