@@ -26,6 +26,7 @@ class SpecificCondition(BetterBase):
 
     def __repr__(self):
         return self.title
+        #return self.title.encode(errors='ignore')
 
 
 condition_table = Table('condition_table', BetterBase.metadata,

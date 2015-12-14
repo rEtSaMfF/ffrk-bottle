@@ -127,13 +127,21 @@ def default_encode(obj):
 
 
 engine = create_engine(
-    'mysql+pymysql://{}:{}@{}:{}/{}'.format(
+    'mysql+pymysql://{}:{}@{}:{}/{}{}'.format(
         os.environ['OPENSHIFT_MYSQL_DB_USERNAME'],
         os.environ['OPENSHIFT_MYSQL_DB_PASSWORD'],
         os.environ['OPENSHIFT_MYSQL_DB_HOST'],
         os.environ['OPENSHIFT_MYSQL_DB_PORT'],
         'ffrk',
-    ), pool_recycle=3600)
+        #'',
+        '?charset=utf8',
+        #'?charset=utf8mb4',
+    ),
+#    convert_unicode=True,
+#    encoding='utf-8',
+#    echo=True,
+    pool_recycle=3600
+)
 create_session = sessionmaker(bind=engine)
 
 

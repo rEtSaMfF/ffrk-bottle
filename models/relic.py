@@ -25,8 +25,8 @@ class Relic(BetterBase):
     is_max_evolution_num = Column(Boolean, nullable=False)
     series_id = Column(Integer, nullable=False)
 
-    image_path = Column(String(length=64), nullable=False)
-    detail_image_path = Column(String(length=64), nullable=False)
+    image_path = Column(String(length=96), nullable=False)
+    detail_image_path = Column(String(length=96), nullable=False)
     description = Column(String(length=256), nullable=False)
     has_someones_soul_strike = Column(Boolean, nullable=False)
     has_soul_strike = Column(Boolean, nullable=False)
@@ -176,18 +176,22 @@ tes may vary.',
             'image_path',
             'detail_image_path',
 
-            # Added 2015-06-07
+            # Added with 2015-06-07 patch
             'is_accessory',
             'is_armor',
             'is_weapon',
 
-            # Added 2015-09-12
+            # Added with 2015-09-12 patch
             'series_hammering_num',
             'is_hammering_item',
             'hammering_affect_param_key',
             'max_hammering_num',
             'hammering_num',
             'is_max_level',
+
+            # Added with 2015-12-14 patch
+            'ex_series_id',
+            'is_locked',
         ):
             if i in kwargs:
                 del(kwargs[i])

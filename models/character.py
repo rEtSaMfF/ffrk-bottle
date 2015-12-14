@@ -417,6 +417,10 @@ class Character(BetterBase):
             'soul_strike_3_id',
             'soul_strike_4_id',
             'soul_strike_exp_map',
+
+            # Added with 2015-12-14 patch
+            'role_type',  # TODO make a column/field
+            'role_type_name',
         ):
             if i in kwargs:
                 del(kwargs[i])

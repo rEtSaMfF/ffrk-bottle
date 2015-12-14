@@ -70,7 +70,7 @@ class Quest(BetterBase):
 
             'description',
 
-            # Added 2015-08-10
+            # Added with 2015-08-10 patch
             'is_event',
             'is_event_type_group',
             'is_normal',
@@ -79,7 +79,7 @@ class Quest(BetterBase):
             'opened_at',
             'closed_at',
 
-            # Added 2015-09-12
+            # Added with 2015-09-12 patch
             'achieve_cond_arg1',
             'achieve_cond_arg2',
             'achieve_cond_arg3',

@@ -100,7 +100,7 @@ class Attribute(BetterBase):
         #return '{}: {}'.format(
         #    self.name, get_factor(self.attribute_id, self.factor))
         return '{}: {}'.format(
-            ATTRIBUTE_ID.get(self.attribute_id, self.attribute_id),
+            ATTRIBUTE_ID.get(int(self.attribute_id), self.attribute_id),
             get_factor(self.attribute_id, self.factor)
         )
 
@@ -138,7 +138,7 @@ class Enemy(BetterBase):
     event_id = Column(SMALLINT, nullable=True)
     event_type = Column(String(length=16), nullable=True)
 
-    lv = Column(TINYINT, nullable=False)
+    lv = Column(SMALLINT, nullable=False)
     max_hp = Column(Integer, nullable=False)
     acc = Column(SMALLINT, nullable=False)
     atk = Column(SMALLINT, nullable=False)
@@ -275,6 +275,9 @@ class Enemy(BetterBase):
             'deform_animation_info',
             'drop_item_list',
             'abilities',
+
+            # Added with 2015-02-14 patch
+            'cast_time_type',
         ):
             if i in kwargs:
                 del(kwargs[i])

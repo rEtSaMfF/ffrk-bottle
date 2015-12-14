@@ -123,6 +123,9 @@ class Battle(BetterBase):
             'order_no',
             'rank',
             'is_unlocked',
+
+            # Added with 2015-06-07 patch
+            'sp_enemy_id',
         ):
             if i in kwargs:
                 del(kwargs[i])

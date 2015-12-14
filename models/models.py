@@ -82,6 +82,16 @@ def get_load_data(data, filepath):
             data = json.load(infile)
     return data
 
+def byteify(input):
+    if isinstance(input, dict):
+        return {byteify(key):byteify(value) for key,value in input.iteritems()}
+    elif isinstance(input, list):
+        return [byteify(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
+
 def import_battle_list(data=None, filepath=''):
     '''
     /dff/world/battles
@@ -93,6 +103,8 @@ def import_battle_list(data=None, filepath=''):
             raise ValueError('One kwarg of data or filepath is required.')
         with open(filepath) as infile:
             data = json.load(infile)
+
+    #data = byteify(data)
 
     success = False
     with session_scope() as session:
@@ -168,6 +180,8 @@ def import_world(data=None, filepath='', ask=False):
                     # So first get what is given
                     battle_id = specific['battle_id']
                     title = specific['title']
+                    #print (title)
+                    #print (type(title))
                     old_condition = session.query(SpecificCondition).filter(
                         SpecificCondition.battle_id == battle_id,
                         SpecificCondition.dungeon_id == new_dungeon.id,
@@ -180,6 +194,7 @@ def import_world(data=None, filepath='', ask=False):
                         type(new_condition).__name__,
                         new_condition))
                     session.add_all((new_condition, new_log))
+                    #session.add(new_condition)
                     session.commit()
                     #old_battle = session.query(Battle).filter(
                     #    Battle.id == battle_id).first()
@@ -357,7 +372,8 @@ def import_battle(data=None, filepath=''):
                                     attribute_id=new_attribute.id,
                                     param_id=new_enemy.param_id)
                                 session.add(association)
-                                # Ugh, this outpus None for the association
+                                session.commit()
+                                # Ugh, this outputs None for the association
                                 new_log = Log(
                                     log='Create AttributeAssociation({})'\
                                     .format(association))
@@ -684,7 +700,8 @@ def get_by_id(id, all=False, enemy=False):
                 q = q.order_by(i)
             # joinedload('*') is slow
             #q = q.options(joinedload('*'))
-            q = q.options(subqueryload('*'))
+            if m != World:
+                q = q.options(subqueryload('*'))
             # lazyload('*') is the default and does not work the way I want
             #q = q.options(lazyload('*'))
 

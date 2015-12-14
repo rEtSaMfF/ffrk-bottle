@@ -141,7 +141,7 @@ class World(BetterBase):
             'is_unlocked',
             'type',
 
-            # Added 2015-08-10
+            # Added with 2015-08-10 patch
             'series_formal_name',
         ):
             if i in kwargs:
