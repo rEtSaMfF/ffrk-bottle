@@ -31,9 +31,9 @@ class Dungeon(BetterBase):
     challenge_level = Column(SMALLINT, nullable=False)
     total_stamina = Column(SMALLINT, nullable=False)
 
-    background_image_path = Column(String(length=64), nullable=False)
-    prologue_image_path = Column(String(length=64), nullable=False)
-    epilogue_image_path = Column(String(length=64), nullable=False)
+    background_image_path = Column(String(length=96), nullable=False)
+    prologue_image_path = Column(String(length=96), nullable=False)
+    epilogue_image_path = Column(String(length=96), nullable=False)
     opened_at = Column(ArrowType, nullable=False)
     # Dungeons_1.opened_at = 2014-05-01T06:00:00+00:00
     # Dungeons_2.opened_at = 2014-01-01T06:00:00+00:00
@@ -216,6 +216,11 @@ class Dungeon(BetterBase):
             # Added with 2015-06-07 patch
             'captures',  # conditions
             'button_style',
+
+            # Added with 2015-12-14 patch
+            'platform_style',
+            'progress_map_level',
+            'unlock_conditions',
         ):
             if i in kwargs:
                 del(kwargs[i])

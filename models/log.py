@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import logging
+import sys
 
 import arrow
 
@@ -30,7 +31,8 @@ class Log(BetterBase):
         logging.info(self.log)
 
     def __repr__(self):
-        return '{} {}'.format(self.timestamp, self.log)
+        #return '{} {}'.format(self.timestamp, self.log)
+        return '{} {}'.format(self.timestamp, self.log.encode(sys.stdout.encoding, errors='ignore'))
 
 
 ### EOF ###
