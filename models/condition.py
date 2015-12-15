@@ -25,8 +25,17 @@ class SpecificCondition(BetterBase):
         super(SpecificCondition, self).__init__(**kwargs)
 
     def __repr__(self):
+        #print ('repr')
         return self.title
         #return self.title.encode(errors='ignore')
+
+    #def __unicode__(self):
+        #print ('uni')
+    #    return self.title
+
+    #def __str__(self):
+        #print ('str')
+    #    return self.title
 
 
 condition_table = Table('condition_table', BetterBase.metadata,

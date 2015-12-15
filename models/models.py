@@ -190,7 +190,8 @@ def import_world(data=None, filepath='', ask=False):
                         continue
                     new_condition = SpecificCondition(
                         dungeon_id=new_dungeon.id, **specific)
-                    new_log = Log(log='Create {}({})'.format(
+                    #print (u'{}'.format(new_condition))
+                    new_log = Log(log=u'Create {}({})'.format(
                         type(new_condition).__name__,
                         new_condition))
                     session.add_all((new_condition, new_log))
@@ -277,7 +278,7 @@ def import_win_battle(data=None, filepath=''):
                 old_condition = Condition(**s)
                 session.add(old_condition)
                 new_log = Log(
-                    log='Create Condition({})'.format(old_condition))
+                    log=u'Create Condition({})'.format(old_condition))
                 session.add(new_log)
                 #new_condition = SpecificCondition(
                 #    battle_id=battle_id,
