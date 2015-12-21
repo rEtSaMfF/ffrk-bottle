@@ -133,6 +133,10 @@ class Ability(BetterBase):
             'image_path',
             'thumbnail_path',
             'material_id_2_num',
+
+            # Added with 2015-12-14 patch
+            'panel_name',
+            'display_category_id',
         ):
             if i in kwargs:
                 del(kwargs[i])

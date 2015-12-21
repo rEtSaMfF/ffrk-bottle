@@ -288,7 +288,7 @@ def import_win_battle(data=None, filepath=''):
                 #session.commit()
             if old_condition not in battle.conditions:
                 battle.conditions.append(old_condition)
-                new_log = Log(log='Add Condition({}) to Battle({})'.format(
+                new_log = Log(log=u'Add Condition({}) to Battle({})'.format(
                     old_condition, battle))
                 session.add(new_log)
                 session.commit()
