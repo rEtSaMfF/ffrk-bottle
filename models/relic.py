@@ -156,6 +156,24 @@ tes may vary.',
         self.image_path = kwargs['image_path'].replace('/dff', '')
         self.detail_image_path = kwargs['detail_image_path'].replace('/dff', '')
 
+        # Added with 2016-01-21 patch
+        # TODO 2016-01-21
+        # Create another function for this
+        for i in (
+            'sp_acc',
+            'sp_atk',
+            'sp_def',
+            'sp_eva',
+            'sp_hp',
+            'sp_matk',
+            'sp_mdef',
+            'sp_mnd',
+            'sp_spd',
+        ):
+            if i in kwargs:
+                kwargs[i.replace('sp_', 'series_')] = kwargs[i]
+                del(kwargs[i])
+
         for i in (
             'allowed_buddy_id',
             'atk_ss_point_factor',

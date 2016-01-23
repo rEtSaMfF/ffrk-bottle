@@ -69,6 +69,7 @@ CATEGORY_ID = {
     'Ninja': 13,
     'Bard': 14,
     'Dancer': 15,
+    'Machinist': 16,
 }
 
 ABILITY_ID_NAME = {
@@ -87,6 +88,7 @@ ABILITY_ID_NAME = {
     13: 'Ninja',
     14: 'Bard',
     15: 'Dancer',
+    16: 'Machinist',
 }
 
 EQUIP_ID_NAME = {}
@@ -249,6 +251,7 @@ class Character(BetterBase):
         ('series_matk', 'RS MAG'),
         ('series_mdef', 'RS RES'),
         ('series_mnd', 'RS MIND'),
+        ('series_spd', 'RS SPD'),
     )
 
     @property
@@ -382,6 +385,26 @@ class Character(BetterBase):
             self.name = kwargs['name']
         self.image_path = kwargs['image_path'].replace('/dff', '')
 
+        # Added with 2016-01-21 patch
+        # This code is slightly redundant but here for safety
+        # TODO 2016-01-21
+        # Create another function for this
+        for i in (
+            'sp_acc',
+            'sp_atk',
+            'sp_def',
+            'sp_eva',
+            'sp_hp',
+            'sp_matk',
+            'sp_mdef',
+            'sp_mnd',
+            'sp_spd',
+        ):
+            if i in kwargs:
+                kwargs[i.replace('sp_', 'series_')] = kwargs[i]
+                del(kwargs[i])
+
+
         for i in (
             'id',
             'ability_1_id',
@@ -421,6 +444,11 @@ class Character(BetterBase):
             # Added with 2015-12-14 patch
             'role_type',  # TODO make a column/field
             'role_type_name',
+
+            # Added with 2015-01-21 patch
+            'dress_record_name',
+            'dress_record_id',
+            'default_image_path',
         ):
             if i in kwargs:
                 del(kwargs[i])

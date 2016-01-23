@@ -465,6 +465,13 @@ def create_fix_relic(e):
 
 def create_fix_character(c):
     success = False
+
+    # Added with 2015-06-07 patch
+    for k in c.keys():
+        if k.startswith('sp_'):
+            c[k.replace('sp_', 'series_')] = c[k]
+            del(c[k])
+
     with session_scope() as session:
         new_character = session.query(Character).filter(
             Character.buddy_id == c['buddy_id'],

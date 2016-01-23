@@ -221,6 +221,9 @@ class Dungeon(BetterBase):
             'platform_style',
             'progress_map_level',
             'unlock_conditions',
+
+            # Added with 2016-01-21 patch
+            'ability_category_bonus_map',
         ):
             if i in kwargs:
                 del(kwargs[i])

@@ -91,7 +91,14 @@ tes may vary.',
         )
 
     def __init__(self, **kwargs):
-        for i in ('image_path', 'created_at', 'num'):
+        for i in (
+            'image_path',
+            'created_at',
+            'num',
+
+            # Added with 2016-01-21 patch
+            'type',
+        ):
             if i in kwargs:
                 del(kwargs[i])
         super(Material, self).__init__(**kwargs)
