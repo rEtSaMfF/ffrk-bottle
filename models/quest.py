@@ -122,7 +122,7 @@ def import_quests(data=None, filepath=''):
                                .filter(Quest.id == quest['id']).first()
             if new_quest is None:
                 new_quest = Quest(**quest)
-                new_log = Log(log='Create {}({})'.format(
+                new_log = Log(log=u'Create {}({})'.format(
                     type(new_quest).__name__, new_quest))
                 session.add_all((new_quest, new_log))
                 session.commit()

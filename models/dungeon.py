@@ -224,6 +224,9 @@ class Dungeon(BetterBase):
 
             # Added with 2016-01-21 patch
             'ability_category_bonus_map',
+
+            # Added with 2016-02-18 patch
+            'missions',
         ):
             if i in kwargs:
                 del(kwargs[i])
