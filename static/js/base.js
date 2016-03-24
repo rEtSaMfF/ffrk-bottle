@@ -16,6 +16,125 @@ var series_map = {
 };
 
 
+function get_name_from_id(array, id) {
+    var ret;
+    $.each(array, function (i, o) {
+        if (o["id"] == id) {
+            ret = o["name"];
+            return ret;
+        }
+    });
+    return ret;
+}
+
+function init_abilities(u, t) {
+    $.getJSON(u, function (d) {
+        data = d;
+        ability_costs = {}
+        $.each(data["ability_costs"], function(i, o) {
+            var ac = ability_costs[o["ability_id"]] || [];
+            ac.push(String(o["material_id"]));
+            ability_costs[o["ability_id"]] = ac;
+        });
+
+        change_rarity(current_rarity, t);
+    })
+        .success(function() {
+            //$("#getSuccess").show();
+            //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
+        })
+        .error(function() {
+            $("#getError").show()
+        })
+        .complete(function() {
+            $("#getInfo").hide();
+        });
+}
+
+
+function change_rarity(r, t) {
+    current_rarity = r;
+
+    columns = [{
+        "field": "alt",
+        "title": "",
+    }];
+    abilities = {};
+    abilities_rows = [];
+
+    // Get column names (material_name) and the correct fields by
+    // material_id according to current_rarity
+    $.each(data["materials"], function(i, material) {
+        // If the material does not match our current_rarity continue
+        if (current_rarity !== material["rarity"])
+            return;
+
+        columns.push({
+            "field": material["id"],
+            "title": material["name"],
+            "footerFormatter": material["name"],
+        });
+        abilities[material["id"]] = [];
+    });
+
+    // Map the abilities to the correct column
+    $.each(data["abilities"], function(i, ability) {
+        // If the ability does not match our current_rarity continue
+        if (current_rarity !== ability["rarity"])
+            return;
+
+        var ability_id = ability["id"];
+        $.each(ability_costs[ability_id], function(j, material_id) {
+            // Some 4* abilities require 5* materials
+            // ie: Phoenix and Major Fire Orb
+            // In that case material_id will not be in abilities
+            if ($.inArray(material_id, Object.keys(abilities)) === -1)
+                return;
+            abilities[material_id].push(ability_id);
+        });
+    });
+
+    // Convert the abilities to rows
+    $.each(abilities, function(material_id1, NO) {
+        row = {"alt": get_name_from_id(data["materials"], material_id1)};
+        $.each(abilities, function(material_id2, ability_ids) {
+            // cell is abilities which use material_id1 and material_id2
+            var cell = []
+            $.each(ability_ids, function(k, ability_id) {
+                var ac = ability_costs[ability_id];
+                if ($.inArray(material_id1, ac) != -1 && $.inArray(material_id2, ac) != -1)
+                    cell.push(get_name_from_id(data["abilities"], ability_id));
+            });
+            row[material_id2] = cell;
+        });
+        abilities_rows.push(row);
+    });
+
+    // columns = [{field: material_id, title: material_name}, ]
+    // abilities = {material_id1: [ability_names, ], }
+    // abilities_rows = [{alt: material_name, material_id1: [], material_id2: []}, ]
+    //console.log(abilities);
+    //console.log(abilities_rows);
+
+    if (!t.startsWith("#"))
+        t = "#" + t;
+    $(t).bootstrapTable("destroy").bootstrapTable({columns: columns, data: abilities_rows});
+}
+
+
+function cell_styler_ability(value, row, index) {
+    console.log('1');
+    var ret = {"css": {}};
+    return ret;
+}
+
+
+function cell_formatter_ability(value, row, index) {
+    console.log('2');
+    return value;
+}
+
+
 function init_characters(u, t) {
     $.getJSON(u, function (d) {
         data = d;
@@ -135,7 +254,8 @@ function inspect_formatter(value, row, index) {
 
 function get_key(obj, value) {
     // Given an Object and a value, get the key.
-    // Check if the value is an Object where I have included the key as a work around
+    // Check if the value is an Object where I have included the key
+    //  as a work around.
     if (value.constructor === Object) {
         var keys = Object.keys(value);
         if (keys.length === 1)
@@ -275,6 +395,7 @@ function calculate_atk(hp, def, physical) {
     return Math.ceil(atk);
 }
 
+
 function calculate_damage(atk, def, physical, boost) {
     var damage = 0;
     var tmp = 0;
@@ -295,6 +416,7 @@ function calculate_damage(atk, def, physical, boost) {
         damage = Math.pow(atk, 1.65) / Math.pow(def, 0.5);
     return Math.floor(damage);
 }
+
 
 function set_damage() {
     var atk = $("#attack").val();

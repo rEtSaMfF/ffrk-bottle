@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
-import os
-import sys
+import csv
 import json
 import logging
+import os
+import sys
 import time
 import traceback
 
@@ -61,9 +62,7 @@ class About(object):
 
 
 def get_realms():
-    '''
-    Get an iterable of 2-tuples (series_id, name) of Realms.
-    '''
+    """Get an iterable of 2-tuples (series_id, name) of Realms."""
     r = ()
     with session_scope() as session:
         realms = session.query(World)\
@@ -82,6 +81,7 @@ def get_load_data(data, filepath):
             data = json.load(infile)
     return data
 
+
 def byteify(input):
     if isinstance(input, dict):
         return {byteify(key):byteify(value) for key,value in input.iteritems()}
@@ -92,10 +92,9 @@ def byteify(input):
     else:
         return input
 
+
 def import_battle_list(data=None, filepath=''):
-    '''
-    /dff/world/battles
-    '''
+    """/dff/world/battles"""
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
@@ -123,10 +122,9 @@ def import_battle_list(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def import_world(data=None, filepath='', ask=False):
-    '''
-    /dff/world/dungeons
-    '''
+    """/dff/world/dungeons"""
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     if data is None or not isinstance(data, dict):
@@ -236,11 +234,11 @@ def import_world(data=None, filepath='', ask=False):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def import_win_battle(data=None, filepath=''):
-    '''
-    /dff/battle/win
+    """/dff/battle/win
     /dff/event/wday/9/win_battle
-    '''
+    """
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
@@ -297,10 +295,9 @@ def import_win_battle(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def import_battle(data=None, filepath=''):
-    '''
-    get_battle_init_data
-    '''
+    """get_battle_init_data"""
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
@@ -435,6 +432,7 @@ def import_battle(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def create_fix_relic(e):
     success = False
     with session_scope() as session:
@@ -463,6 +461,51 @@ def create_fix_relic(e):
         success = True
     return success
 
+
+def check_ssb(stat, buddy_id, old_value, new_value):
+    """Check if the stat difference is due to the mastery of an SSB.
+
+    Requires the values to be hard-coded in a local "ssb.csv" file with
+    columns: buddy_id,name,stat,value
+
+    Returns bool.
+    """
+    filepath = os.path.join(os.environ['OPENSHIFT_DATA_DIR'], 'ssb.csv')
+    try:
+        with open(filepath) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                # continue if we do not have the correct buddy_id
+                if int(row['buddy_id']) != int(buddy_id):
+                    continue
+
+                # Here we have the correct buddy_id
+                # Check if we have the correct stat
+                if not (row['stat'] == stat or
+                        'series_{}'.format(row['stat']) == stat):
+                    # return False because stat difference is not due to
+                    # this SSB mastery.
+                    # Is it possible in the future that a single character's SSB
+                    # may include a stat boost to different stats?
+                    # If so continue instead.
+                    return False
+
+                # Here we have the correct stat
+                # Check if the stat difference is correct
+                if int(row['value']) == (int(new_value) - int(old_value)):
+                    # It appears as if the stat difference is due to a
+                    # SSB mastery.
+                    logging.debug(
+                        'Stat difference due to SSB mastery for ' +
+                        '{} found and ignored.'.format(row['name'])
+                    )
+                    return True
+    except (FileNotFoundError, ):
+        return False
+
+    return False
+
+
 def create_fix_character(c):
     success = False
 
@@ -476,26 +519,33 @@ def create_fix_character(c):
         new_character = session.query(Character).filter(
             Character.buddy_id == c['buddy_id'],
             Character.level == c['level']).first()
+
         if new_character is None:
             new_character = Character(**c)
             new_log = Log(log='Create {}({})'.format(
                 type(new_character).__name__, new_character))
             session.add_all((new_character, new_log))
             session.commit()
+
         # Compare and update stats for balance patches.
         c['defense'] = c['def']
         for k in new_character.columns:
             if k in ('description', 'name', 'image_path', 'id'):
                 continue
             old_value = new_character.__getattribute__(k)
-            if old_value != c[k]:
-                new_character.__setattr__(k, c[k])
+            new_value = c[k]
+            if old_value != new_value:
+                # Check added with my first SSB on 2016-03-23
+                if check_ssb(k, c['buddy_id'], old_value, new_value):
+                    continue
+                new_character.__setattr__(k, new_value)
                 new_log = Log(log='Update {}({}).{} from {} to {}'.format(
                     type(new_character).__name__, new_character,
-                    k, old_value, new_character.__getattribute__(k))
+                    k, old_value, new_value)
                 )
                 session.add(new_log)
                 session.commit()
+
         # Add what types of Relic and Ability this Character may use.
         # Ideally this would only run once per balance patch.
         for i, ec in c['equipment_category'].items():
@@ -543,10 +593,9 @@ def create_fix_character(c):
         success = True
     return success
 
+
 def import_party(data=None, filepath=''):
-    '''
-    /dff/party/list
-    '''
+    """/dff/party/list"""
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
@@ -575,6 +624,7 @@ def import_party(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def import_dff(data=None, filepath=''):
     data = get_load_data(data, filepath)
 
@@ -584,11 +634,11 @@ def import_dff(data=None, filepath=''):
 
     return import_party(data, filepath)
 
+
 def import_recipes(data=None, filepath=''):
-    '''
-    /dff/ability/get_generation_recipes
+    """/dff/ability/get_generation_recipes
     /dff/ability/get_upgrade_recipes
-    '''
+    """
     logging.debug('{}(filepath="{}") start'.format(
         sys._getframe().f_code.co_name, filepath))
     data = get_load_data(data, filepath)
@@ -631,11 +681,11 @@ def import_recipes(data=None, filepath=''):
         sys._getframe().f_code.co_name, filepath))
     return success
 
+
 def import_enhance_evolve(data=None, filepath=''):
-    '''
-    /dff/equipment/enhance
+    """/dff/equipment/enhance
     /dff/equipment/evolve
-    '''
+    """
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -649,10 +699,9 @@ def import_enhance_evolve(data=None, filepath=''):
             success = False
     return success
 
+
 def import_grow(data=None, filepath=''):
-    '''
-    /dff/grow_egg/use
-    '''
+    """/dff/grow_egg/use"""
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -670,6 +719,7 @@ def get_by_name(name, all=False):
     with session_scope() as session:
         # TODO 2015-05-12
         pass
+
 
 def get_by_id(id, all=False, enemy=False):
     r = None
@@ -722,6 +772,7 @@ def get_by_id(id, all=False, enemy=False):
                 break
         session.expunge_all()
     return r
+
 
 def get_name_by_id(id):
     with session_scope() as session:

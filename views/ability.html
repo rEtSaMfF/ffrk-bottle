@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+
+{% block title %}Ability Grid{% endblock title %}
+
+
+{% block extra_head %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.css">{% endblock extra_head %}
+
+
+{% block extra_body %}<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.js"></script>
+<script src="{{ url('static', filepath='js/bootstrap-table-mobile.min.js') }}"></script>{% endblock extra_body %}
+
+
+{% block info_alert %}Loading{% endblock info_alert %}
+
+
+{% block extra_javascript %}var data, current_rarity=5;
+  $(document).ready(function () {
+    init_abilities("{{ data_url }}", "main-table");
+    $("#getInfo").show();
+    $(window).resize(function () {
+      //$("#main-table").bootstrapTable("resetView");
+    });
+    $("#main-table").on("load-success.bs.table", function () {
+      // Scroll up
+      //$("div.fixed-table-body").scrollTop($("#main-table").height());
+      // Show success alert
+      //$("#getSuccess").show();
+      // And automatically hide the alert
+      //window.setTimeout(function() { $("#getSuccess").hide(); }, 1500);
+      $('#getError').hide();
+    });
+    $("#main-table").on("load-error.bs.table", function () {
+      $("div.fixed-table-body").scrollTop($("#main-table").height());
+      $("#getError").show()
+    });
+  });{% endblock extra_javascript %}
+
+
+{% block content %}
+<div id="main-toolbar" class="dropdown">
+  <button class="btn btn-default dropdown-toggle" type="button" id="main-dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">Change Rarity <span class="caret"></span></button>
+  <ul class="dropdown-menu" aria-labelledby="main-dropdown">
+    {% for r in range(1,6) %}
+    <li><a href="#" onclick="change_rarity({{ r }}, 'main-table')">{{ r }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+
+<table
+   id="main-table"
+   class="table-condensed table-striped"
+   data-toggle="table"
+   data-cache="true"
+   data-show-columns="true"
+   data-show-footer="true"
+   data-show-toggle="true"
+   data-search="true"
+   data-key-events="true"
+   data-mobile-responsive="true"
+   data-check-on-init="true"
+   data-min-width="640"
+   data-toolbar="#main-toolbar"
+>
+</table>
+{% endblock content %}

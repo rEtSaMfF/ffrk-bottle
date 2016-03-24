@@ -38,9 +38,7 @@ Jinja2Template.defaults['get_content_dates'] = models.get_content_dates
 
 
 def minify_json(data):
-    '''
-    Return a json string as small as possible.
-    '''
+    """Return a json string as small as possible."""
     return json.dumps(data, default=models.default_encode, separators=(',',':'))
 
 def save_json(data, filepath='/tmp/ffrk.json', min=False):
@@ -92,10 +90,9 @@ def robots():
 @app.get('/<iden>', name='main')
 @view('main.html')
 def main(iden=None):
-    '''
-    Render a page for a single object.
+    """Render a page for a single object.
     Corresponds with url('json_id').
-    '''
+    """
     try:
         iden = int(iden)
     except ValueError:
@@ -121,16 +118,16 @@ def main(iden=None):
 @app.get('/', name='home')
 @view('table.html')
 def home(category=None):
-    '''
-    Render a table.
+    """Render a table.
     Corresponds with url('json').
-    '''
+    """
     # TODO 2015-05-06
     # Make a real home page
     # 2015-05-07
     # We have an about page at least
     if category is None:
-        category = request.GET.get('category', '').lower()
+        category = request.GET.get('category', '').lower() or\
+                   request.GET.get('c', '').lower()
     if not category:
         redirect(app.get_url('main', iden='about'))
     rarity = request.GET.get('rarity', 'all')
@@ -165,9 +162,7 @@ def home(category=None):
 @app.get('/characters', name='characters')
 @view('character.html')
 def character():
-    '''
-    Render a character comparison
-    '''
+    """Render a character comparison."""
     context = {
         'o': models.Character,
         'data_url': '{}?category=character'.format(app.get_url('json')),
@@ -176,13 +171,90 @@ def character():
     return context
 
 
+@app.get('/ability', name='ability')
+@app.get('/abilities', name='abilities')
+@view('ability.html')
+def ability():
+    """Render an ability/material grid.
+    Corresponds with url('json_abilities').
+    """
+    context = {
+        'data_url': app.get_url('json_abilities'),
+    }
+    return context
+
+
+@app.get('/abilities.json', name='json_abilities')
+@app.get('/json/abilities')
+def json_ability():
+    """Get JSON for abilities and materials."""
+
+    response.content_type = 'application/json; charset=UTF8'
+
+    with models.session_scope() as session:
+        # Get the first object per models.Ability
+        q = session.query(models.Ability)\
+                   .order_by(models.Ability.name)\
+                   .group_by(models.Ability.name)
+        abilities = q.all()
+
+        # These are the our internal ability_ids for the next query
+        ability_ids = (i.id for i in abilities)
+
+        # Get all of the models.AbilityCost per ability
+        q = session.query(models.AbilityCost)\
+                   .filter(models.AbilityCost.ability_id.in_(ability_ids))
+        ability_costs = q.all()
+
+        # Get all of the materials
+        q = session.query(models.Material)
+        materials = q.all()
+
+        session.expunge_all()
+
+    # Clean up the data
+    abilities = (
+        {
+            'id': a.id,
+            'name': a.name,
+            'rarity': a.rarity,
+            'search_id': a.search_id,
+        } for a in abilities
+    )
+
+    ability_costs = (
+        {
+            'ability_id': ac.ability_id,
+            'material_id': ac.material_id,
+        } for ac in ability_costs
+    )
+
+    materials = (
+        {
+            'id': m.id,
+            'name': m.name.split()[-2],
+            'rarity': m.rarity
+        } for m in materials
+    )
+
+    ret = {
+        'abilities': abilities,
+        'ability_costs': ability_costs,
+        'materials': materials,
+    }
+
+    if ret:
+        return minify_json(ret)
+
+    response.status = 404
+    return minify_json({'success':False, 'error':'No results found'})
+
+
 @app.get('/calc', name='calc')
 @app.get('/calculator', name='calculator')
 @view('calc.html')
 def calc():
-    '''
-    Render a damange calculator.
-    '''
+    """Render a damange calculator."""
     return {}
 
 
@@ -190,10 +262,9 @@ def calc():
 @app.get('/dungeons', name='dungeons')
 @view('dungeons.html')
 def dungeons():
-    '''
-    Render a dungeon table listing.
+    """Render a dungeon table listing.
     Corresponds with url('json_dungeons').
-    '''
+    """
     content = request.GET.get('content', '')
     event = request.GET.get('event', '')
     world_id = request.GET.get('world', '') or request.GET.get('world_id', '')
@@ -224,9 +295,7 @@ def dungeons():
 @app.get('/dungeons.json', name='json_dungeons')
 @app.get('/json/dungeons')
 def json_dungeons():
-    '''
-    Get JSON for dungeon listings.
-    '''
+    """Get JSON for dungeon listings."""
     response.content_type = 'application/json; charset=UTF8'
 
     content = request.GET.get('content')
@@ -268,9 +337,7 @@ def json_dungeons():
 
 @app.get('/json/<id:int>', name='json_id')
 def get_json_by_id(id):
-    '''
-    Get JSON for an object (or all similar objects).
-    '''
+    """Get JSON for an object (or all similar objects)."""
     response.content_type = 'application/json; charset=UTF8'
 
     all = request.GET.get('all', False)
@@ -290,12 +357,11 @@ def get_json_by_id(id):
 
 @app.get('/json', name='json')
 def get_json():
-    '''
-    Get JSON for a category (table).
-    '''
+    """Get JSON for a category (table)."""
     response.content_type = 'application/json; charset=UTF8'
 
-    category = request.GET.get('category', None)
+    category = request.GET.get('category', None) or\
+               request.GET.get('c', None)
     if category is None:
         response.status = 404
         return minify_json({'success':False, 'error':'Unknown category'})
@@ -391,13 +457,12 @@ def get_json():
 
 @app.post('/post', method='POST')
 def post():
-    '''
-    Parse a new FFRK response (intercepted from a client).
+    """Parse a new FFRK response (intercepted from a client).
 
     This is basically the same thing as ffrk_mitm.response() except that
     here we pick the proper function from the 'action' key instead of
     flow.request.path.
-    '''
+    """
     #abort(401, '401 Unauthorized')
     response.content_type = 'application/json; charset=UTF8'
     try:
