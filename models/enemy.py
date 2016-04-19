@@ -284,7 +284,7 @@ class Enemy(BetterBase):
         super(Enemy, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '{} ({})'.format(self.name, self.lv)
+        return u'{} ({})'.format(self.name, self.lv)
 
 
 '''

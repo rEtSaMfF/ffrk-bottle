@@ -70,10 +70,11 @@ def get_realms():
                         .filter(World.world_type == 1).all()
         session.expunge_all()
     r = [(w.series_id, w.name) for w in realms]
-    return [(200001, 'Core')] + sorted(r)
+    return [(200001, 'Core')] + sorted(r) + [(150001, 'FFT')]
 
 
 def get_load_data(data, filepath):
+    """Get a dictionary of data or load the dictionary from a JSON file."""
     if data is None or not isinstance(data, dict):
         if not filepath:
             raise ValueError('One kwarg of data or filepath is required.')
@@ -345,7 +346,7 @@ def import_battle(data=None, filepath=''):
                             e['params'] = p
                             new_enemy = Enemy(**e)
                             new_log = Log(
-                                log='Create Enemy({})'.format(new_enemy))
+                                log=u'Create Enemy({})'.format(new_enemy))
                             session.add_all((new_enemy, new_log))
                             session.commit()
                         # Get/Create/Associate Attribute()
@@ -387,7 +388,7 @@ def import_battle(data=None, filepath=''):
                             id=battle_id).first()
                         if old_battle is None:
                             logging.warning(
-                                'We are missing a battle object for {}'\
+                                u'We are missing a battle object for {}'\
                                 .format(new_enemy))
                             # This may occur if we skip import_battle_list()
                             continue
@@ -421,7 +422,7 @@ def import_battle(data=None, filepath=''):
                         if old_battle not in new_enemy.battles:
                             new_enemy.battles.append(old_battle)
                             new_log = Log(
-                                log='Add Enemy({}) to Battle({})'.format(
+                                log=u'Add Enemy({}) to Battle({})'.format(
                                     new_enemy, old_battle))
                             session.add(new_log)
                         session.commit()

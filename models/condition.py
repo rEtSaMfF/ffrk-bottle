@@ -49,7 +49,7 @@ class Condition(BetterBase):
     __tablename__ = 'condition'
     id = Column(Integer, primary_key=True, autoincrement=True)
     condition_id = Column(SMALLINT, nullable=False)
-    code_name = Column(String(length=32), nullable=False)
+    code_name = Column(String(length=64), nullable=False)
     title = Column(String(length=128), nullable=False)
     #medal_num = Column(TINYINT, nullable=False)
 

@@ -29,7 +29,7 @@ class DropAssociation(BetterBase):
         super(DropAssociation, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '{} from {} in {}'.format(self.drop, self.enemy, self.battle)
+        return u'{} from {} in {}'.format(self.drop, self.enemy, self.battle)
 
 
 class Drop(BetterBase):
