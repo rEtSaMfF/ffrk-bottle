@@ -501,7 +501,7 @@ def check_ssb(stat, buddy_id, old_value, new_value):
                         '{} found and ignored.'.format(row['name'])
                     )
                     return True
-    except (FileNotFoundError, ):
+    except (IOError, ):  # python3 uses FileNotFoundError which is a subclass?
         return False
 
     return False
@@ -530,19 +530,19 @@ def create_fix_character(c):
 
         # Compare and update stats for balance patches.
         c['defense'] = c['def']
-        for k in new_character.columns:
-            if k in ('description', 'name', 'image_path', 'id'):
+        for key in new_character.columns:
+            if key in ('description', 'name', 'image_path', 'id'):
                 continue
-            old_value = new_character.__getattribute__(k)
-            new_value = c[k]
+            old_value = new_character.__getattribute__(key)
+            new_value = c[key]
             if old_value != new_value:
                 # Check added with my first SSB on 2016-03-23
-                if check_ssb(k, c['buddy_id'], old_value, new_value):
+                if check_ssb(key, c['buddy_id'], old_value, new_value):
                     continue
-                new_character.__setattr__(k, new_value)
+                new_character.__setattr__(key, new_value)
                 new_log = Log(log='Update {}({}).{} from {} to {}'.format(
                     type(new_character).__name__, new_character,
-                    k, old_value, new_value)
+                    key, old_value, new_value)
                 )
                 session.add(new_log)
                 session.commit()
@@ -550,6 +550,11 @@ def create_fix_character(c):
         # Add what types of Relic and Ability this Character may use.
         # Ideally this would only run once per balance patch.
         for i, ec in c['equipment_category'].items():
+            # Added with 2016-05-25 patch
+            if ec['is_extended']:
+                # is_extended means improved somehow, probably with sphere
+                # grid type power creep
+                continue
             ce = session.query(CharacterEquip).filter(
                 CharacterEquip.category_id == ec['category_id'],
                 CharacterEquip.equipment_type == ec['equipment_type'],
@@ -571,7 +576,15 @@ def create_fix_character(c):
                 CharacterAbility.category_id == ac['category_id'],
                 CharacterAbility.buddy_id == new_character.buddy_id).first()
             if ca is not None:
-                if ca.rarity != int(ac['rarity']):
+                # Added with 2016-05-25 patch
+                if ac['is_extended']:
+                    # is_extended means improved with Nightmare completion
+                    # or probably sphere grid type power creep
+                    continue
+                # Changed 2016-05-23 for 6* power creep.
+                # Only executes if old_value < new_value
+                # Assumes that power creep means we only get more powerful.
+                if ca.rarity < int(ac['rarity']):
                     old_rarity = ca.rarity
                     ca.rarity = ac['rarity']
                     new_log = Log(
@@ -603,11 +616,11 @@ def import_party(data=None, filepath=''):
 
     success = False
     with session_scope() as session:
-        equipments = data['equipments']
+        equipments = data.get('equipments', ())
         for e in equipments:
             create_fix_relic(e)
 
-        materials = data['materials']
+        materials = data.get('materials', ())
         for m in materials:
             if session.query(session.query(Material).filter_by(
                     id=m['id']).exists()).scalar():
@@ -617,7 +630,7 @@ def import_party(data=None, filepath=''):
             session.add_all((new_material, new_log))
             session.commit()
 
-        buddies = data['buddies']
+        buddies = data.get('buddies', ())
         for c in buddies:
             create_fix_character(c)
         success = True

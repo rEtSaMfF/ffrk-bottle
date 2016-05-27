@@ -70,6 +70,7 @@ CATEGORY_ID = {
     'Bard': 14,
     'Dancer': 15,
     'Machinist': 16,
+    'Darkness': 17,
 }
 
 ABILITY_ID_NAME = {
@@ -89,6 +90,7 @@ ABILITY_ID_NAME = {
     14: 'Bard',
     15: 'Dancer',
     16: 'Machinist',
+    17: 'Darkness',
 }
 
 EQUIP_ID_NAME = {}
@@ -113,16 +115,19 @@ class CharacterEquip(BetterBase):
 
     def __init__(self, **kwargs):
         known_factor = '100'
-        if kwargs['factor'] != known_factor:
+        if str(kwargs['factor']) != known_factor:
             logging.critical(
-                '{} has a non {} factor'.format(
-                    type(self).__name__, known_factor))
+                '{}.factor={} and not {} factor'.format(
+                    type(self).__name__, kwargs['factor'], known_factor))
 
         self.category_id = int(kwargs['category_id'])
 
         for i in (
             'factor',
             'category_id',
+
+            # Added with 2016-05-25 patch
+            'is_extended',
         ):
             if i in kwargs:
                 del(kwargs[i])
@@ -158,6 +163,9 @@ class CharacterAbility(BetterBase):
         for i in (
             'name',
             'category_id',
+
+            # Added with 2016-05-25 patch
+            'is_extended',
         ):
             if i in kwargs:
                 del(kwargs[i])
@@ -449,6 +457,10 @@ class Character(BetterBase):
             'dress_record_name',
             'dress_record_id',
             'default_image_path',
+
+            # Added with 2016-05-25 patch
+            'sphere_skill_level',
+            'brave_series_ids_map',
         ):
             if i in kwargs:
                 del(kwargs[i])
