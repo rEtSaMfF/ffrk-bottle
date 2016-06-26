@@ -661,7 +661,7 @@ def import_recipes(data=None, filepath=''):
     with session_scope() as session:
         recipes = data['recipe']
         for grades in recipes.values():
-            for a in grades.values():
+            for a in sorted(grades.values()):
                 new_ability = session.query(Ability).filter_by(
                     ability_id=a['ability_id'], grade=a['grade']).first()
                 if new_ability is None:

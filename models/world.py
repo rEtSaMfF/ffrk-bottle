@@ -58,7 +58,7 @@ class World(BetterBase):
                     ('type', 'Type'),
                     ('conditions',
                      'Conditions <span data-container="body" data-toggle="tooltip" title="The non-specific conditions are not listed here." class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
-                    ('stamina', 'Stamina'),
+                    ('total_stamina', 'Stamina'),
                     ('shards',
                      'Shards <span data-container="body" data-toggle="tooltip" title="First Time Reward + Mastery Reward" class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>'),
                     ('prizes', 'Rewards'),
@@ -131,7 +131,11 @@ class World(BetterBase):
         #kwargs['closed_at'] = datetime.fromtimestamp(kwargs['closed_at'])
         #kwargs['kept_out_at'] = datetime.fromtimestamp(kwargs['kept_out_at'])
         kwargs['opened_at'] = arrow.get(kwargs['opened_at'])
-        kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
+        try:
+            kwargs['closed_at'] = arrow.get(kwargs['closed_at'])
+        except (TypeError, OverflowError):
+            # closed_at may be larger than we may handle so change it here
+            kwargs['closed_at'] = arrow.get(2145938400)
         kwargs['kept_out_at'] = arrow.get(kwargs['kept_out_at'])
         for i in (
             'bgm',

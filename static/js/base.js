@@ -10,6 +10,7 @@ var series_map = {
     108001: "FF VIII",
     109001: "FF IX",
     110001: "FF X",
+    111001: "FF XI",
     112001: "FF XII",
     113001: "FF XIII",
     114001: "FF XIV",
@@ -257,7 +258,10 @@ function get_key(obj, value) {
     // Given an Object and a value, get the key.
     // Check if the value is an Object where I have included the key
     //  as a work around.
-    if (value.constructor === Object) {
+    // TODO 2016-06-06
+    // Re-factor this for the improved thing.
+    // Check series_map if the value is undefined.
+    if (value && value.constructor === Object) {
         var keys = Object.keys(value);
         if (keys.length === 1)
             return keys[0];
@@ -310,7 +314,7 @@ function cell_styler(value, row, index) {
             value = get_value(row, k);
     }
 
-    if (value.constructor === Number) {
+    if (value && value.constructor === Number) {
         var m = rlerp(min_stats[key], max_stats[key], value);
         var c = fraction_to_rgb(m);
         ret["css"]["background-color"] = c;

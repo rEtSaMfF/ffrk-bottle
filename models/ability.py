@@ -137,6 +137,9 @@ class Ability(BetterBase):
             # Added with 2015-12-14 patch
             'panel_name',
             'display_category_id',
+
+            # Added with 2016-06-23 patch
+            'disable_generation',
         ):
             if i in kwargs:
                 del(kwargs[i])

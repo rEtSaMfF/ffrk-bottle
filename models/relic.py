@@ -176,6 +176,7 @@ tes may vary.',
 
         for i in (
             'allowed_buddy_id',
+            'allowed_buddy_name',
             'atk_ss_point_factor',
             'def_ss_point_factor',
             'attributes',
