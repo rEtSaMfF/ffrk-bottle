@@ -26,16 +26,23 @@ except IOError:
 
 
 import logging
+
 logfile = os.path.join(os.environ['OPENSHIFT_DATA_DIR'], 'logs', 'ffrk.log')
-logging.basicConfig(filename=logfile, level=logging.DEBUG,
-                    format='%(asctime)s [%(levelname)-5s] %(message)s',
-                    # [CRITICAL] [INFO ]
-                    #format='%(asctime)s [%(levelname)-5.5s] %(message)s',
-                    # [CRITI] [INFO ]
-                    #format='%(asctime)s [%(levelname)-5.5s] %(message)s',
-                    # [CRITI] [INFO]
-                    datefmt='%Y-%m-%dT%H:%M:%S%z',
-)
+fmt='%(asctime)s [%(levelname)-5s] %(message)s'  # [CRITICAL] [INFO ]
+#fmt='%(asctime)s [%(levelname)-5.5s] %(message)s'  # [CRITI] [INFO ]
+#fmt='%(asctime)s [%(levelname)-5.5s] %(message)s'  # [CRITI] [INFO]
+datefmt='%Y-%m-%dT%H:%M:%S%z'
+
+#logging.basicConfig(
+#    filename=logfile, level=logging.DEBUG, format=fmt, datefmt=datefmt
+#)
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(logfile, 'w', 'utf-8')
+handler.setFormatter(logging.Formatter(fmt, datefmt))
+root_logger.addHandler(handler)
+
 logging.info('Logging started')
 
 

@@ -28,11 +28,14 @@ class Log(BetterBase):
 
     def __init__(self, **kwargs):
         super(Log, self).__init__(**kwargs)
-        logging.info(self.log)
+        try:
+            logging.info(self.log)
+        except (UnicodeEncodeError, ):
+            logging.critical(UnicodeEncodeError)
 
     def __repr__(self):
         #return '{} {}'.format(self.timestamp, self.log)
-        return '{} {}'.format(self.timestamp, self.log.encode(sys.stdout.encoding, errors='ignore'))
+        return '{} {}'.format(self.timestamp, self.log.encode(errors='ignore'))
 
 
 ### EOF ###

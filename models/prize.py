@@ -51,8 +51,8 @@ class Prize(BetterBase):
         super(Prize, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '{} x{} ({})'.format(self.name, self.count,
-                                    PRIZE_TYPE[self.prize_type])
+        return u'{} x{} ({})'.format(self.name, self.count,
+                                    PRIZE_TYPE[int(self.prize_type)])
 
 
 ### EOF ###

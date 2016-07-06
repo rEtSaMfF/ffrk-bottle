@@ -225,11 +225,14 @@ def import_world(data=None, filepath='', ask=False):
                     new_prize.drop = drop
                     session.add(new_prize)
                     session.commit()
-                    new_log = Log(
-                        log='Create Prize({}) from Dungeon({})'.format(
-                            new_prize, new_dungeon))
-                    session.add(new_log)
-                    session.commit()
+                    try:
+                        new_log = Log(
+                            log=u'Create Prize({}) from Dungeon({})'.format(
+                                new_prize, new_dungeon))
+                        session.add(new_log)
+                        session.commit()
+                    except (UnicodeEncodeError, ):
+                        logging.critical('UnicodeEncodeError')
         success = True
     logging.debug('{}(filepath="{}") end'.format(
         sys._getframe().f_code.co_name, filepath))
