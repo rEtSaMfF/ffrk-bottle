@@ -211,6 +211,14 @@ tes may vary.',
             # Added with 2015-12-14 patch
             'ex_series_id',
             'is_locked',
+
+            # Added with 2016-08-09 patch
+            'atk_type',
+            'max_hyper_evolution_num',
+            'is_max_hyper_evolution_num',
+            'can_hyper_evolve_now',
+            'can_hyper_evolve_potentially',
+            'hyper_evolve_recipe',
         ):
             if i in kwargs:
                 del(kwargs[i])

@@ -278,6 +278,9 @@ class Enemy(BetterBase):
 
             # Added with 2015-02-14 patch
             'cast_time_type',
+
+            # Added with 2016-08-09 patch
+            'constraints',
         ):
             if i in kwargs:
                 del(kwargs[i])
