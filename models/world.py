@@ -150,6 +150,9 @@ class World(BetterBase):
 
             # Added with 2015-05-25 patch
             'has_brave_series_buddies',
+
+            # Added with 2016-10 patch
+            'banner_message',
         ):
             if i in kwargs:
                 del(kwargs[i])
