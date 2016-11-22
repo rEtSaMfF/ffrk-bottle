@@ -156,8 +156,9 @@ def import_world(data=None, filepath='', ask=False):
                 new_log = Log(log='Create Dungeon({})'.format(new_dungeon))
                 session.add(new_log)
             # Added with 2015-06-07 patch
-            if new_dungeon.total_stamina == 0:
-                new_dungeon.total_stamina = dungeon.get('total_stamina', 0)
+            total_stamina = dungeon.get('total_stamina', 0)
+            if new_dungeon.total_stamina == 0 and total_stamina != 0:
+                new_dungeon.total_stamina = total_stamina
                 new_log = Log(
                     log='Update {}({}).total_stamina from 0 to {}'.format(
                         type(new_dungeon).__name__, new_dungeon,
@@ -418,7 +419,7 @@ def import_battle(data=None, filepath=''):
                                 session.add(drop_association)
                                 session.commit()
                                 new_log = Log(
-                                    log='Create DropAssociation({})'.format(
+                                    log=u'Create DropAssociation({})'.format(
                                         drop_association))
                                 session.add(new_log)
                         # Associate Enemy() with Battle()

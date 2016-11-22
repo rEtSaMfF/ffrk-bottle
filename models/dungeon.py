@@ -227,6 +227,10 @@ class Dungeon(BetterBase):
 
             # Added with 2016-02-18 patch
             'missions',
+
+            # Added with 2016-11 multiplayer patch
+            'total_host_stamina',
+            'total_guest_stamina',
         ):
             if i in kwargs:
                 del(kwargs[i])

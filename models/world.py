@@ -13,6 +13,7 @@ from .base import BetterBase, session_scope, STRFTIME
 WORLD_TYPE = {
     1: 'Realm',
     2: 'Challenge',
+    5: 'Raid',
 }
 
 

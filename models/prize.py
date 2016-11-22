@@ -13,6 +13,8 @@ PRIZE_TYPE = {
     2: 'First Time Reward',
     3: 'Mastery Reward',
     4: 'Quest Reward',
+    5: 'Solo? Raid Reward',
+    6: 'Leader? Raid Reward',
 }
 
 class Prize(BetterBase):
@@ -45,6 +47,9 @@ class Prize(BetterBase):
             'num',
             'image_path',
             'type_name',
+
+            # Added with 2016-11 multiplayer patch
+            'disp_order',
         ):
             if i in kwargs:
                 del(kwargs[i])

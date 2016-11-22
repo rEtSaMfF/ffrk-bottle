@@ -219,6 +219,25 @@ tes may vary.',
             'can_hyper_evolve_now',
             'can_hyper_evolve_potentially',
             'hyper_evolve_recipe',
+
+            # Added with 2016-10 patch
+            'additional_bonus_attributes',
+            'additional_bonus_acc',
+            'additional_bonus_atk',
+            'additional_bonus_def',
+            'additional_bonus_eva',
+            'additional_bonus_hp',
+            'additional_bonus_matk',
+            'additional_bonus_mdef',
+            'additional_bonus_mnd',
+            'acc_min',
+            'atk_min',
+            'def_min',
+            'eva_min',
+            'hp_min',
+            'matk_min',
+            'mdef_min',
+            'mnd_min',
         ):
             if i in kwargs:
                 del(kwargs[i])

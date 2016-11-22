@@ -140,6 +140,9 @@ class Ability(BetterBase):
 
             # Added with 2016-06-23 patch
             'disable_generation',
+
+            # Added with 2016-08-09 patch
+            'animation_id',
         ):
             if i in kwargs:
                 del(kwargs[i])
