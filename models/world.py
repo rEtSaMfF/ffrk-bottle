@@ -160,7 +160,7 @@ class World(BetterBase):
         super(World, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '[{}] {}'.format(WORLD_TYPE[self.world_type], self.name)
+        return u'[{}] {}'.format(WORLD_TYPE[self.world_type], self.name)
 
 
 def get_active_events(now=None):

@@ -116,7 +116,7 @@ def import_battle_list(data=None, filepath=''):
                 session.add(new_battle)
                 session.commit()
                 # This will output None for the dungeon name :(
-                new_log = Log(log='Create Battle({})'.format(new_battle))
+                new_log = Log(log=u'Create Battle({})'.format(new_battle))
                 session.add(new_log)
         success = True
     logging.debug('{}(filepath="{}") end'.format(
@@ -142,7 +142,7 @@ def import_world(data=None, filepath='', ask=False):
             new_world = World(**world)
             session.add(new_world)
             session.commit()
-            new_log = Log(log='Create World({})'.format(new_world))
+            new_log = Log(log=u'Create World({})'.format(new_world))
             session.add(new_log)
         for dungeon in data.get('dungeons', []):
             captures = dungeon['captures']
@@ -153,7 +153,7 @@ def import_world(data=None, filepath='', ask=False):
                 new_dungeon = Dungeon(**dungeon)
                 session.add(new_dungeon)
                 session.commit()
-                new_log = Log(log='Create Dungeon({})'.format(new_dungeon))
+                new_log = Log(log=u'Create Dungeon({})'.format(new_dungeon))
                 session.add(new_log)
             # Added with 2015-06-07 patch
             total_stamina = dungeon.get('total_stamina', 0)

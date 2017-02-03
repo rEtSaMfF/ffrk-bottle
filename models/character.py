@@ -71,6 +71,7 @@ CATEGORY_ID = {
     'Dancer': 15,
     'Machinist': 16,
     'Darkness': 17,
+    'Shooter': 19,
 }
 
 ABILITY_ID_NAME = {

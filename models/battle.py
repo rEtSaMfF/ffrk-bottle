@@ -133,7 +133,7 @@ class Battle(BetterBase):
         super(Battle, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '{}>{}'.format(self.dungeon, self.name)
+        return u'{}>{}'.format(self.dungeon, self.name)
 
 
 ### EOF ###

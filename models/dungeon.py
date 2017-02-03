@@ -231,13 +231,19 @@ class Dungeon(BetterBase):
             # Added with 2016-11 multiplayer patch
             'total_host_stamina',
             'total_guest_stamina',
+
+            # Added with 2017-02 patch
+            'stamina_list',
+            'continue_allowable_type',
+            'unlocked_series_ids',
+            'stamina_consume_type',
         ):
             if i in kwargs:
                 del(kwargs[i])
         super(Dungeon, self).__init__(**kwargs)
 
     def __repr__(self):
-        return '{}/{} ({}) [{}]'.format(
+        return u'{}/{} ({}) [{}]'.format(
             self.world, self.name,
             DUNGEON_TYPE[self.dungeon_type], self.challenge_level)
 
