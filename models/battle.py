@@ -126,6 +126,9 @@ class Battle(BetterBase):
 
             # Added with 2015-06-07 patch
             'sp_enemy_id',
+
+            # Added with 2017-03-15 patch
+            'play_mode',
         ):
             if i in kwargs:
                 del(kwargs[i])

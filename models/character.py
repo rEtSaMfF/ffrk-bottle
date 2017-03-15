@@ -92,6 +92,7 @@ ABILITY_ID_NAME = {
     15: 'Dancer',
     16: 'Machinist',
     17: 'Darkness',
+    19: 'Shooter',
 }
 
 EQUIP_ID_NAME = {}
