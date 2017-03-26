@@ -463,6 +463,10 @@ class Character(BetterBase):
             # Added with 2016-05-25 patch
             'sphere_skill_level',
             'brave_series_ids_map',
+
+            # Added with 2017-03-15 patch
+            'legend_materia_1_id',
+            'legend_materia_2_id',
         ):
             if i in kwargs:
                 del(kwargs[i])

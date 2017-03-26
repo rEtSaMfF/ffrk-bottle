@@ -237,6 +237,9 @@ class Dungeon(BetterBase):
             'continue_allowable_type',
             'unlocked_series_ids',
             'stamina_consume_type',
+
+            # Added with 2017-03-15 patch
+            'mo_stamina_list',
         ):
             if i in kwargs:
                 del(kwargs[i])

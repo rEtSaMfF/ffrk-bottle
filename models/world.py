@@ -137,7 +137,11 @@ class World(BetterBase):
         except (TypeError, OverflowError):
             # closed_at may be larger than we may handle so change it here
             kwargs['closed_at'] = arrow.get(2145938400)
-        kwargs['kept_out_at'] = arrow.get(kwargs['kept_out_at'])
+        try:
+            kwargs['kept_out_at'] = arrow.get(kwargs['kept_out_at'])
+        except (TypeError, OverflowError):
+            # kept_out_at may be larger than we may handle so change it here
+            kwargs['kept_out_at'] = arrow.get(2145938400)
         for i in (
             'bgm',
             'door_image_path',
