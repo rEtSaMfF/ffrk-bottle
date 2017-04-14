@@ -39,7 +39,7 @@ class SpecificCondition(BetterBase):
 
 
 condition_table = Table('condition_table', BetterBase.metadata,
-                    Column('battle_id', Integer,
+                    Column('battle_id', BIGINT,
                            ForeignKey('battle.id'), nullable=False),
                     Column('condition_id', Integer,
                            ForeignKey('condition.id'), nullable=False)
