@@ -143,6 +143,7 @@ class Ability(BetterBase):
 
             # Added with 2016-08-09 patch
             'animation_id',
+            'additional_animation_ids',
         ):
             if i in kwargs:
                 del(kwargs[i])

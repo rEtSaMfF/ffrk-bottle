@@ -4,6 +4,7 @@ import logging
 
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.dialects.mysql import BIGINT
 
 from .base import BetterBase, session_scope
 from .log import Log
@@ -13,7 +14,7 @@ class DropAssociation(BetterBase):
     __tablename__ = 'drop_table'
     enemy_id = Column(Integer, ForeignKey('enemy.id'), primary_key=True)
     drop_id = Column(Integer, ForeignKey('drop.id'), primary_key=True)
-    battle_id = Column(Integer, ForeignKey('battle.id'), primary_key=True)
+    battle_id = Column(BIGINT, ForeignKey('battle.id'), primary_key=True)
 
     enemy = relationship('Enemy',
                          backref=backref('drops'),

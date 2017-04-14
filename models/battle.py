@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table
-from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
+from sqlalchemy.dialects.mysql import TINYINT, SMALLINT, BIGINT
 from sqlalchemy.orm import relationship
 
 from .base import BetterBase, session_scope
@@ -11,13 +11,13 @@ from .condition import SpecificCondition
 enemy_table = Table('enemy_table', BetterBase.metadata,
                     Column('enemy_id', Integer,
                            ForeignKey('enemy.id'), nullable=False),
-                    Column('battle_id', Integer,
+                    Column('battle_id', BIGINT,
                             ForeignKey('battle.id'), nullable=False),
 )
 
 class Battle(BetterBase):
     __tablename__ = 'battle'
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(BIGINT, primary_key=True, autoincrement=False)
     dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=False)
     name = Column(String(length=64), nullable=False)
     round_num = Column(TINYINT, nullable=False)

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Table
-from sqlalchemy.dialects.mysql import SMALLINT
+from sqlalchemy.dialects.mysql import SMALLINT, BIGINT
 from sqlalchemy.orm import relationship, backref
 
 from .base import BetterBase
@@ -11,7 +11,7 @@ class SpecificCondition(BetterBase):
     __tablename__ = 'specific_condition'
     id = Column(Integer, primary_key=True, autoincrement=True)
     #battle_id = Column(Integer, ForeignKey('battle.id'), nullable=False)
-    battle_id = Column(Integer, nullable=False)
+    battle_id = Column(BIGINT, nullable=False)
     dungeon_id = Column(Integer, nullable=False)
     title = Column(String(length=128), nullable=False)
 
