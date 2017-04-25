@@ -152,7 +152,7 @@ class Enemy(BetterBase):
     spd = Column(SMALLINT, nullable=False)
 
     #counters = relationship('counters')
-    exp = Column(SMALLINT, nullable=False)
+    exp = Column(Integer, nullable=False)
 
     frontend_columns = (
         ('name', 'Name'),
