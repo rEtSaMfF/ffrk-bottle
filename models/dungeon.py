@@ -240,6 +240,10 @@ class Dungeon(BetterBase):
 
             # Added with 2017-03-15 patch
             'mo_stamina_list',
+
+            # Added with 2017-04-27 patch
+            'ss_gauge_type',
+            'buddy_additional_status_bonus_level',
         ):
             if i in kwargs:
                 del(kwargs[i])

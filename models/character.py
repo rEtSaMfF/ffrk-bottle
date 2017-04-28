@@ -467,6 +467,9 @@ class Character(BetterBase):
             # Added with 2017-03-15 patch
             'legend_materia_1_id',
             'legend_materia_2_id',
+
+            # Added with 2017-04-27 patch
+            'legend_materia_exp_map',
         ):
             if i in kwargs:
                 del(kwargs[i])
