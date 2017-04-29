@@ -129,6 +129,9 @@ class Battle(BetterBase):
 
             # Added with 2017-03-15 patch
             'play_mode',
+
+            # Added with 2017-04-28 patch
+            'show_timer_type',
         ):
             if i in kwargs:
                 del(kwargs[i])
