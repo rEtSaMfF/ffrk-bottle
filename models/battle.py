@@ -18,7 +18,7 @@ enemy_table = Table('enemy_table', BetterBase.metadata,
 class Battle(BetterBase):
     __tablename__ = 'battle'
     id = Column(BIGINT, primary_key=True, autoincrement=False)
-    dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=False)
+    dungeon_id = Column(BIGINT, ForeignKey('dungeon.id'), nullable=False)
     name = Column(String(length=64), nullable=False)
     round_num = Column(TINYINT, nullable=False)
     has_boss = Column(Boolean, nullable=False)

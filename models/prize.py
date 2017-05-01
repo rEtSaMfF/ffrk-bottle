@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.dialects.mysql import TINYINT, SMALLINT
+from sqlalchemy.dialects.mysql import TINYINT, SMALLINT, BIGINT
 
 from .base import BetterBase
 from .log import Log
@@ -26,7 +26,7 @@ class Prize(BetterBase):
 
     drop_type = Column(String(length=16), nullable=False)
     drop_id = Column(Integer, ForeignKey('drop.id'), nullable=False)
-    dungeon_id = Column(Integer, ForeignKey('dungeon.id'), nullable=True)
+    dungeon_id = Column(BIGINT, ForeignKey('dungeon.id'), nullable=True)
     quest_id = Column(Integer, ForeignKey('quest.id'), nullable=True)
 
     drop = relationship('Drop', backref=backref('prizes'))
