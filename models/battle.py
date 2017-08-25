@@ -132,6 +132,10 @@ class Battle(BetterBase):
 
             # Added with 2017-04-28 patch
             'show_timer_type',
+
+            # Added with 2017-08-24 path
+            'battle_ticket_id_2_num',
+            'has_battle_ticket',
         ):
             if i in kwargs:
                 del(kwargs[i])

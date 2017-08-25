@@ -238,6 +238,9 @@ tes may vary.',
             'matk_min',
             'mdef_min',
             'mnd_min',
+
+            # Added with 2017-05 patch
+            'legend_materia_id',
         ):
             if i in kwargs:
                 del(kwargs[i])
