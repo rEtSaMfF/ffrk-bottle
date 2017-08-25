@@ -244,6 +244,11 @@ class Dungeon(BetterBase):
             # Added with 2017-04-27 patch
             'ss_gauge_type',
             'buddy_additional_status_bonus_level',
+
+            # Added with 2017-07-24 patch
+            'battle_drop_items',
+            'battle_ticket_id_2_num',
+            'has_battle_ticket',
         ):
             if i in kwargs:
                 del(kwargs[i])
