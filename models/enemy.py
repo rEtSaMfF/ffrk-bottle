@@ -281,6 +281,9 @@ class Enemy(BetterBase):
 
             # Added with 2016-08-09 patch
             'constraints',
+
+            # Added with 2017-08-24 patch
+            'matk_attributes',
         ):
             if i in kwargs:
                 del(kwargs[i])
