@@ -249,6 +249,7 @@ class Dungeon(BetterBase):
             'battle_drop_items',
             'battle_ticket_id_2_num',
             'has_battle_ticket',
+            'recommend_beast_type',
         ):
             if i in kwargs:
                 del(kwargs[i])

@@ -15,6 +15,7 @@ PRIZE_TYPE = {
     4: 'Quest Reward',
     5: 'Solo? Raid Reward',
     6: 'Leader? Raid Reward',
+    7: 'Time Bonus Reward',
 }
 
 class Prize(BetterBase):
@@ -50,6 +51,9 @@ class Prize(BetterBase):
 
             # Added with 2016-11 multiplayer patch
             'disp_order',
+
+            # Added with 2017-08-24 patch
+            'clear_battle_time',
         ):
             if i in kwargs:
                 del(kwargs[i])
